@@ -1,0 +1,911 @@
+{
+  "255": {
+    "inputs": {
+      "image": "a4129c51_0_row007_不经意间的照片，((女人))，写实风格，在卧室床上，(50岁气质，正在发生性行为)，皱纹，少许老年斑，后入式性爱姿势，年龄差，忘年恋,精致耳环，丰.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "加载图像"
+    }
+  },
+  "257": {
+    "inputs": {
+      "noise": [
+        "259",
+        0
+      ],
+      "guider": [
+        "326",
+        0
+      ],
+      "sampler": [
+        "325",
+        0
+      ],
+      "sigmas": [
+        "324",
+        0
+      ],
+      "latent_image": [
+        "321",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "自定义采样器（高级）"
+    }
+  },
+  "259": {
+    "inputs": {
+      "noise_seed": 10
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "随机噪波"
+    }
+  },
+  "260": {
+    "inputs": {
+      "resize_type": "scale height",
+      "resize_type.height": [
+        "299",
+        0
+      ],
+      "scale_method": "lanczos",
+      "input": [
+        "255",
+        0
+      ]
+    },
+    "class_type": "ResizeImageMaskNode",
+    "_meta": {
+      "title": "调整图像/掩码大小"
+    }
+  },
+  "261": {
+    "inputs": {
+      "value": 720
+    },
+    "class_type": "INTConstant",
+    "_meta": {
+      "title": "Width"
+    }
+  },
+  "267": {
+    "inputs": {
+      "vae_name": "ltx-2-3-22b-VAE.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "269": {
+    "inputs": {
+      "any_01": [
+        "270",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "Any Switch (rgthree)"
+    }
+  },
+  "270": {
+    "inputs": {
+      "unet_name": "sulpher/sulphur_dev_bf16_model.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "UNet加载器"
+    }
+  },
+  "273": {
+    "inputs": {
+      "width": [
+        "261",
+        0
+      ],
+      "height": [
+        "299",
+        0
+      ],
+      "batch_size": 1,
+      "color": 0
+    },
+    "class_type": "EmptyImage",
+    "_meta": {
+      "title": "空图像"
+    }
+  },
+  "274": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "scale_by": 0.5,
+      "image": [
+        "273",
+        0
+      ]
+    },
+    "class_type": "ImageScaleBy",
+    "_meta": {
+      "title": "缩放图像（比例）"
+    }
+  },
+  "275": {
+    "inputs": {
+      "image": [
+        "274",
+        0
+      ]
+    },
+    "class_type": "GetImageSize",
+    "_meta": {
+      "title": "获取图像尺寸"
+    }
+  },
+  "276": {
+    "inputs": {
+      "strength": 1,
+      "bypass": false,
+      "vae": [
+        "267",
+        0
+      ],
+      "image": [
+        "311",
+        0
+      ],
+      "latent": [
+        "279",
+        0
+      ]
+    },
+    "class_type": "LTXVImgToVideoInplace",
+    "_meta": {
+      "title": "LTXV图像转视频（原地）"
+    }
+  },
+  "279": {
+    "inputs": {
+      "samples": [
+        "282",
+        2
+      ],
+      "upscale_model": [
+        "297",
+        0
+      ],
+      "vae": [
+        "267",
+        0
+      ]
+    },
+    "class_type": "LTXVLatentUpsampler",
+    "_meta": {
+      "title": "spatial"
+    }
+  },
+  "282": {
+    "inputs": {
+      "positive": [
+        "310",
+        0
+      ],
+      "negative": [
+        "310",
+        1
+      ],
+      "latent": [
+        "323",
+        0
+      ]
+    },
+    "class_type": "LTXVCropGuides",
+    "_meta": {
+      "title": "LTXV裁剪指导"
+    }
+  },
+  "283": {
+    "inputs": {
+      "noise_seed": 0
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "随机噪波"
+    }
+  },
+  "284": {
+    "inputs": {
+      "cfg": 1,
+      "model": [
+        "294",
+        0
+      ],
+      "positive": [
+        "282",
+        0
+      ],
+      "negative": [
+        "282",
+        1
+      ]
+    },
+    "class_type": "CFGGuider",
+    "_meta": {
+      "title": "CFG引导器"
+    }
+  },
+  "285": {
+    "inputs": {
+      "sigmas": "0.909375, 0.725, 0.421875, 0.0"
+    },
+    "class_type": "ManualSigmas",
+    "_meta": {
+      "title": "自定义Sigmas"
+    }
+  },
+  "286": {
+    "inputs": {
+      "sampler_name": "gradient_estimation"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "K采样器选择"
+    }
+  },
+  "287": {
+    "inputs": {
+      "video_latent": [
+        "293",
+        0
+      ],
+      "audio_latent": [
+        "323",
+        1
+      ]
+    },
+    "class_type": "LTXVConcatAVLatent",
+    "_meta": {
+      "title": "LTXVConcatAVLatent"
+    }
+  },
+  "288": {
+    "inputs": {
+      "noise": [
+        "283",
+        0
+      ],
+      "guider": [
+        "284",
+        0
+      ],
+      "sampler": [
+        "286",
+        0
+      ],
+      "sigmas": [
+        "285",
+        0
+      ],
+      "latent_image": [
+        "287",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "自定义采样器（高级）"
+    }
+  },
+  "289": {
+    "inputs": {
+      "av_latent": [
+        "288",
+        0
+      ]
+    },
+    "class_type": "LTXVSeparateAVLatent",
+    "_meta": {
+      "title": "LTXV分离音视频潜空间"
+    }
+  },
+  "291": {
+    "inputs": {
+      "samples": [
+        "289",
+        1
+      ],
+      "audio_vae": [
+        "389",
+        0
+      ]
+    },
+    "class_type": "LTXVAudioVAEDecode",
+    "_meta": {
+      "title": "LTXV音频VAE解码"
+    }
+  },
+  "292": {
+    "inputs": {
+      "fps": [
+        "304",
+        0
+      ],
+      "images": [
+        "396",
+        0
+      ],
+      "audio": [
+        "367",
+        0
+      ]
+    },
+    "class_type": "CreateVideo",
+    "_meta": {
+      "title": "创建视频"
+    }
+  },
+  "293": {
+    "inputs": {
+      "any_01": [
+        "276",
+        0
+      ],
+      "any_02": [
+        "279",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "Switch Latent"
+    }
+  },
+  "294": {
+    "inputs": {
+      "lora_name": "ltx-2.3-22b-distilled-lora-1.1_fro90_ceil72_condsafe.safetensors",
+      "strength_model": 0.7,
+      "model": [
+        "269",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoRA加载器（仅模型）"
+    }
+  },
+  "297": {
+    "inputs": {
+      "model_name": "ltx-2.3-spatial-upscaler-x2-1.1.safetensors"
+    },
+    "class_type": "LatentUpscaleModelLoader",
+    "_meta": {
+      "title": "加载Latent放大模型"
+    }
+  },
+  "299": {
+    "inputs": {
+      "value": 1280
+    },
+    "class_type": "INTConstant",
+    "_meta": {
+      "title": "Height"
+    }
+  },
+  "304": {
+    "inputs": {
+      "value": 24
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "FPS"
+    }
+  },
+  "305": {
+    "inputs": {
+      "value": 1
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "CFG"
+    }
+  },
+  "307": {
+    "inputs": {
+      "value": 8
+    },
+    "class_type": "INTConstant",
+    "_meta": {
+      "title": "Steps"
+    }
+  },
+  "310": {
+    "inputs": {
+      "frame_rate": [
+        "304",
+        0
+      ],
+      "positive": [
+        "331",
+        0
+      ],
+      "negative": [
+        "328",
+        0
+      ]
+    },
+    "class_type": "LTXVConditioning",
+    "_meta": {
+      "title": "LTXV条件"
+    }
+  },
+  "311": {
+    "inputs": {
+      "longer_edge": 1920,
+      "images": [
+        "260",
+        0
+      ]
+    },
+    "class_type": "ResizeImagesByLongerEdge",
+    "_meta": {
+      "title": "缩放图像（长边）"
+    }
+  },
+  "312": {
+    "inputs": {
+      "img_compression": 33,
+      "image": [
+        "311",
+        0
+      ]
+    },
+    "class_type": "LTXVPreprocess",
+    "_meta": {
+      "title": "LTXV预处理"
+    }
+  },
+  "313": {
+    "inputs": {
+      "strength": 1,
+      "bypass": false,
+      "vae": [
+        "267",
+        0
+      ],
+      "image": [
+        "312",
+        0
+      ],
+      "latent": [
+        "319",
+        0
+      ]
+    },
+    "class_type": "LTXVImgToVideoInplace",
+    "_meta": {
+      "title": "LTXV图像转视频（原地）"
+    }
+  },
+  "317": {
+    "inputs": {
+      "_float": [
+        "304",
+        0
+      ]
+    },
+    "class_type": "CR Float To Integer",
+    "_meta": {
+      "title": "🔧 CR Float To Integer"
+    }
+  },
+  "318": {
+    "inputs": {
+      "frames_number": [
+        "362",
+        0
+      ],
+      "frame_rate": [
+        "317",
+        0
+      ],
+      "batch_size": 1,
+      "audio_vae": [
+        "389",
+        0
+      ]
+    },
+    "class_type": "LTXVEmptyLatentAudio",
+    "_meta": {
+      "title": "LTXV 空音频潜空间"
+    }
+  },
+  "319": {
+    "inputs": {
+      "width": [
+        "275",
+        0
+      ],
+      "height": [
+        "275",
+        1
+      ],
+      "length": [
+        "362",
+        0
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptyLTXVLatentVideo",
+    "_meta": {
+      "title": "空Latent视频（LTXV）"
+    }
+  },
+  "320": {
+    "inputs": {
+      "any_01": [
+        "313",
+        0
+      ],
+      "any_02": [
+        "319",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "Switch Latent"
+    }
+  },
+  "321": {
+    "inputs": {
+      "video_latent": [
+        "320",
+        0
+      ],
+      "audio_latent": [
+        "366",
+        0
+      ]
+    },
+    "class_type": "LTXVConcatAVLatent",
+    "_meta": {
+      "title": "LTXVConcatAVLatent"
+    }
+  },
+  "322": {
+    "inputs": {
+      "value": 15
+    },
+    "class_type": "INTConstant",
+    "_meta": {
+      "title": "Length (Max 20 Secs)"
+    }
+  },
+  "323": {
+    "inputs": {
+      "av_latent": [
+        "257",
+        0
+      ]
+    },
+    "class_type": "LTXVSeparateAVLatent",
+    "_meta": {
+      "title": "LTXV分离音视频潜空间"
+    }
+  },
+  "324": {
+    "inputs": {
+      "steps": [
+        "307",
+        0
+      ],
+      "max_shift": 2.05,
+      "base_shift": 0.95,
+      "stretch": true,
+      "terminal": 0.1,
+      "latent": [
+        "321",
+        0
+      ]
+    },
+    "class_type": "LTXVScheduler",
+    "_meta": {
+      "title": "LTXV调度器"
+    }
+  },
+  "325": {
+    "inputs": {
+      "sampler_name": "euler_ancestral"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "K采样器选择"
+    }
+  },
+  "326": {
+    "inputs": {
+      "cfg": [
+        "305",
+        0
+      ],
+      "model": [
+        "349",
+        0
+      ],
+      "positive": [
+        "310",
+        0
+      ],
+      "negative": [
+        "310",
+        1
+      ]
+    },
+    "class_type": "CFGGuider",
+    "_meta": {
+      "title": "CFG引导器"
+    }
+  },
+  "327": {
+    "inputs": {
+      "filename_prefix": "ltx2.3/my/v",
+      "format": "auto",
+      "codec": "auto",
+      "video-preview": "",
+      "video": [
+        "292",
+        0
+      ]
+    },
+    "class_type": "SaveVideo",
+    "_meta": {
+      "title": "保存视频"
+    }
+  },
+  "328": {
+    "inputs": {
+      "text": "blurry, out of focus, low quality, worst quality, jpeg artifacts, static, no motion, frozen, duplicate, watermark, text, signature, poorly drawn, bad anatomy, deformed, disfigured, extra limbs, missing limbs, floating limbs, disconnected body parts, overexposed, underexposed, grainy, noise, harsh outdoor lighting, direct sunlight",
+      "clip": [
+        "332",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP文本编码"
+    }
+  },
+  "331": {
+    "inputs": {
+      "text": [
+        "394",
+        0
+      ],
+      "clip": [
+        "332",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP文本编码"
+    }
+  },
+  "332": {
+    "inputs": {
+      "clip_name1": "gemma_3_12B_it.safetensors",
+      "clip_name2": "ltx-2-3-22b-text_encoder.safetensors",
+      "type": "ltxv",
+      "device": "default"
+    },
+    "class_type": "DualCLIPLoader",
+    "_meta": {
+      "title": "双CLIP加载器"
+    }
+  },
+  "349": {
+    "inputs": {
+      "lora_name": "ltx-2.3-22b-distilled-lora-1.1_fro90_ceil72_condsafe.safetensors",
+      "strength_model": 0.7,
+      "model": [
+        "269",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoRA加载器（仅模型）"
+    }
+  },
+  "354": {
+    "inputs": {
+      "model_name": "MelBandRoformer_fp32.safetensors"
+    },
+    "class_type": "MelBandRoFormerModelLoader",
+    "_meta": {
+      "title": "Mel-Band RoFormer Model Loader"
+    }
+  },
+  "362": {
+    "inputs": {
+      "any_02": [
+        "404",
+        1
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "Selected Frame Count"
+    }
+  },
+  "366": {
+    "inputs": {
+      "any_02": [
+        "318",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "Switch Audio Latent"
+    }
+  },
+  "367": {
+    "inputs": {
+      "any_02": [
+        "291",
+        0
+      ],
+      "any_03": [
+        "384",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "Switch Audio"
+    }
+  },
+  "368": {
+    "inputs": {
+      "output": "",
+      "input": [
+        "362",
+        0
+      ]
+    },
+    "class_type": "Display Int (rgthree)",
+    "_meta": {
+      "title": "Selected Frame Count"
+    }
+  },
+  "378": {
+    "inputs": {
+      "any_01": [
+        "289",
+        0
+      ],
+      "any_02": [
+        "323",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "Video Latent"
+    }
+  },
+  "384": {
+    "inputs": {
+      "samples": [
+        "323",
+        1
+      ],
+      "audio_vae": [
+        "389",
+        0
+      ]
+    },
+    "class_type": "LTXVAudioVAEDecode",
+    "_meta": {
+      "title": "LTXV音频VAE解码"
+    }
+  },
+  "389": {
+    "inputs": {
+      "vae_name": "ltx-2-3-22b-audio_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "393": {
+    "inputs": {
+      "value": "Cinematic hyper-realistic 8K video of a beautiful blonde woman with shoulder-length blonde hair, seen from behind in a doggystyle position. She is completely naked, kneeling on a bed with her back arched and large, round, juicy buttocks raised high. Her skin is covered in glistening sweat droplets that shine under the light, especially on her back and ass.\n\nPOV rear-entry vaginal sex from the man's first-person perspective. The man's thick erect penis is deeply penetrating her vagina, with clear visible insertion and rhythmic thrusting. His lower body and hand gripping her waist or hip are visible in the foreground.\n\nSequence of actions:\n- Steady, powerful thrusting in and out, causing her big ass to ripple and jiggle realistically with each impact.\n- Her back and buttocks glisten with sweat, some sweat dripping down her curves.\n- She turns her head slightly to the side, showing pleasure expression, mouth slightly open, breathing heavily.\n- Natural skin texture with realistic movement of her ass and thighs during sex.\n\nCamera: Dynamic close-up POV angle from behind, focusing on the penetration, her wet glistening buttocks, and the rhythmic motion. Alternating between normal speed and slow-motion shots to capture the ass jiggle, skin slapping, and detailed fluids. Slight natural camera movement during thrusting.\n\nEnvironment: Cozy bedroom with wooden furniture, bed sheets, soft indoor lighting mixed with daylight, messy realistic room details in the background.\n\nAudio (very important): Highly detailed immersive sound — loud wet skin-slapping sounds, rhythmic thrusting and pounding noises, her muffled moans and heavy breathing, occasional louder gasps, male low groans of pleasure, very wet pussy sounds, creaking bed, high-quality realistic erotic audio with satisfying impact and wetness.\n\nStyle: Photorealistic, ultra-detailed skin texture, realistic sweat and body fluids, glossy highlights on wet skin, natural anatomy, cinematic lighting, sharp focus, sensual and erotic atmosphere, masterpiece, best quality, extremely detailed.Maintain Facial Consistency"
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "Prompt"
+    }
+  },
+  "394": {
+    "inputs": {
+      "any_01": [
+        "393",
+        0
+      ],
+      "any_02": [
+        "393",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "Prompt Selector"
+    }
+  },
+  "395": {
+    "inputs": {
+      "samples": [
+        "378",
+        0
+      ],
+      "vae": [
+        "267",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE解码"
+    }
+  },
+  "396": {
+    "inputs": {
+      "any_01": [
+        "395",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "Switch VAE Output"
+    }
+  },
+  "404": {
+    "inputs": {
+      "expression": "(ceil((a * b)/8) * 8)+ 1",
+      "variables.a": [
+        "322",
+        0
+      ],
+      "variables.b": [
+        "304",
+        0
+      ]
+    },
+    "class_type": "SimpleCalculatorKJ",
+    "_meta": {
+      "title": "SimpleCalculatorKJ"
+    }
+  },
+  "405": {
+    "inputs": {
+      "source": [
+        "312",
+        0
+      ]
+    },
+    "class_type": "PreviewAny",
+    "_meta": {
+      "title": "Prompt Preview"
+    }
+  }
+}

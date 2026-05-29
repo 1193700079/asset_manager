@@ -1,0 +1,20 @@
+# Organized assets (symlinks, too many files)
+images/*
+videos/*
+
+# SQLite hash cache (regeneratable)
+hash_cache.db
+hash_cache.db-wal
+hash_cache.db-shm
+
+# Python
+__pycache__/
+*.pyc
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Node (video-frame-extractor)
+video-frame-extractor/node_modules/
+video-frame-extractor/dist/

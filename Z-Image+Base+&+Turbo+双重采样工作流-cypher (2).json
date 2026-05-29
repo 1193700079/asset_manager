@@ -1,0 +1,272 @@
+{
+  "1": {
+    "inputs": {
+      "vae_name": "ae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "2": {
+    "inputs": {
+      "shift": 5,
+      "model": [
+        "14",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingAuraFlow",
+    "_meta": {
+      "title": "采样算法（AuraFlow）"
+    }
+  },
+  "4": {
+    "inputs": {
+      "samples": [
+        "13",
+        0
+      ],
+      "vae": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE解码"
+    }
+  },
+  "5": {
+    "inputs": {
+      "text": "Core Style: keyhole reveal composition, gap focus, voyeuristic tension, cinematic forbidden scene\n\nForeground: slightly ajar pink wooden bedroom door, narrow vertical door gap about 8-12cm wide, soft pink door frame and door edge heavily blurred, creamy dreamy bokeh, occupying 55% of the frame, shallow depth of field, gentle pastel pink haze\n\nThrough the narrow door crack: a tall, voluptuous, strikingly beautiful young Japanese woman in soft casual loungewear, side profile, squatting low on the floor, performing oral sex on an elderly naked 70-year-old Japanese man, she is holding the base of his penis in her mouth, both hands gently gripping the old man’s thick thighs for balance\n\nThe old man: standing upright, looking down dominantly, one hand firmly grasping a fistful of the girl’s long hair, controlling the rhythm, aged wrinkled skin, white pubic hair, natural sagging elderly male body, expression of quiet authority and pleasure\n\nLighting: warm dim bedroom lamplight coming from behind the girl, strong rim light outlining both figures, subtle light rays cutting through the door gap, high contrast between illuminated bodies and deep shadow around the door frame, cinematic chiaroscuro, intimate low-key lighting\n\nOptics: razor-sharp focus precisely on the girl’s lips and the penis connection + the old man’s hand in her hair, extremely shallow depth of field, cinematic bokeh, visible focus fall-off, shot through narrow aperture, voyeuristic peeping-tom angle\n\nMood: forbidden intimacy, power imbalance, secret late-night encounter, erotic tension, hushed eroticism, slight sense of intrusion, ultra-realistic skin texture, delicate moisture and saliva details, 8k, cinematic color grading, shot on Arri Alexa 65, subtle film grain。"
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP文本编码"
+    }
+  },
+  "6": {
+    "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "加载CLIP"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": "blurry ugly bad",
+      "clip": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP文本编码"
+    }
+  },
+  "10": {
+    "inputs": {
+      "width": 1080,
+      "height": 1920,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Size"
+    }
+  },
+  "12": {
+    "inputs": {
+      "add_noise": "enable",
+      "noise_seed": [
+        "43",
+        0
+      ],
+      "steps": [
+        "17",
+        0
+      ],
+      "cfg": 3,
+      "sampler_name": "euler",
+      "scheduler": "normal",
+      "start_at_step": 0,
+      "end_at_step": [
+        "18",
+        0
+      ],
+      "return_with_leftover_noise": "enable",
+      "model": [
+        "2",
+        0
+      ],
+      "positive": [
+        "47",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "latent_image": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "KSamplerAdvanced",
+    "_meta": {
+      "title": "K采样器（高级）"
+    }
+  },
+  "13": {
+    "inputs": {
+      "add_noise": "disable",
+      "noise_seed": [
+        "43",
+        0
+      ],
+      "steps": [
+        "17",
+        0
+      ],
+      "cfg": 1,
+      "sampler_name": "er_sde",
+      "scheduler": "sgm_uniform",
+      "start_at_step": [
+        "18",
+        0
+      ],
+      "end_at_step": 10000,
+      "return_with_leftover_noise": "disable",
+      "model": [
+        "19",
+        0
+      ],
+      "positive": [
+        "47",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "latent_image": [
+        "12",
+        0
+      ]
+    },
+    "class_type": "KSamplerAdvanced",
+    "_meta": {
+      "title": "K采样器（高级）"
+    }
+  },
+  "14": {
+    "inputs": {
+      "unet_name": "z_image_bf16.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "UNet加载器"
+    }
+  },
+  "15": {
+    "inputs": {
+      "unet_name": "ZIT-Remix_realityv2.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "UNet加载器"
+    }
+  },
+  "17": {
+    "inputs": {
+      "value": 10
+    },
+    "class_type": "Int",
+    "_meta": {
+      "title": "Steps"
+    }
+  },
+  "18": {
+    "inputs": {
+      "value": 0
+    },
+    "class_type": "Int",
+    "_meta": {
+      "title": "Spilt Steps"
+    }
+  },
+  "19": {
+    "inputs": {
+      "shift": 5,
+      "model": [
+        "15",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingAuraFlow",
+    "_meta": {
+      "title": "采样算法（AuraFlow）"
+    }
+  },
+  "35": {
+    "inputs": {
+      "filename_prefix": "2026-05-04/20260504_134937_Z-Image",
+      "images": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "保存图像"
+    }
+  },
+  "43": {
+    "inputs": {
+      "seed": -1
+    },
+    "class_type": "Seed (rgthree)",
+    "_meta": {
+      "title": "Seed (rgthree)"
+    }
+  },
+  "47": {
+    "inputs": {
+      "text": "Hyper-realistic portrait of a gorgeous 21-year-old Bollywood-style Indian actress, fair luminous youthful skin, perfect symmetrical face with soft young features, large seductive eyes with long lashes, plump lips, long silky straight black hair flowing in the wind, hourglass voluptuous body, wearing a deep backless black saree with silver embellishments, heavy traditional jewelry, dramatic cinematic lighting, standing on a balcony overlooking the sea at sunset, masterpiece, 8k, extremely detailed",
+      "clip": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP文本编码"
+    }
+  },
+  "48": {
+    "inputs": {
+      "text": "令人惊叹的广角风景摄影，巴塔哥尼亚（Patagonia）风格的尖锐花岗岩山峰，山脚下是绿松石色的冰川湖泊，秋天的森林色彩（红色和橙色），日出时分第一缕阳光照在山顶，戏剧性的云层，极其详细的纹理，电影级调色。 Breathtaking wide-angle landscape photography, Patagonia-style jagged granite peaks, turquoise glacial lake at the base, autumn forest colors (reds and oranges), first light of sunrise hitting the peaks, dramatic clouds, extremely detailed textures, cinematic color grading.\n\nCore Style: keyhole reveal composition, gap focus, voyeuristic tension, cinematic forbidden scene\n\nForeground: slightly ajar pink wooden bedroom door, narrow vertical door gap about 8-12cm wide, soft pink door frame and door edge heavily blurred, creamy dreamy bokeh, occupying 55% of the frame, shallow depth of field, gentle pastel pink haze\n\nThrough the narrow door crack: a tall, voluptuous, strikingly beautiful young Japanese woman in soft casual loungewear, side profile, squatting low on the floor, performing oral sex on an elderly naked 70-year-old Japanese man, she is holding the base of his penis in her mouth, both hands gently gripping the old man’s thick thighs for balance\n\nThe old man: standing upright, looking down dominantly, one hand firmly grasping a fistful of the girl’s long hair, controlling the rhythm, aged wrinkled skin, white pubic hair, natural sagging elderly male body, expression of quiet authority and pleasure\n\nLighting: warm dim bedroom lamplight coming from behind the girl, strong rim light outlining both figures, subtle light rays cutting through the door gap, high contrast between illuminated bodies and deep shadow around the door frame, cinematic chiaroscuro, intimate low-key lighting\n\nOptics: razor-sharp focus precisely on the girl’s lips and the penis connection + the old man’s hand in her hair, extremely shallow depth of field, cinematic bokeh, visible focus fall-off, shot through narrow aperture, voyeuristic peeping-tom angle\n\nMood: forbidden intimacy, power imbalance, secret late-night encounter, erotic tension, hushed eroticism, slight sense of intrusion, ultra-realistic skin texture, delicate moisture and saliva details, 8k, cinematic color grading, shot on Arri Alexa 65, subtle film grain。"
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP文本编码"
+    }
+  },
+  "49": {
+    "inputs": {
+      "text": "一个神秘而性感的东方女性真人版死神修女站在宏伟的哥特式大教堂内部，被透过高耸彩色玻璃窗洒下的幽蓝月光照亮，玻璃窗上绘有复杂的宗教图案。她有着典型的东方面孔特征：精致瓜子脸、细长凤眼、高挺小巧鼻梁、饱满樱桃小嘴，皮肤白皙如瓷，带着微微冷艳的神秘气质。双眼被带蕾丝边的黑色丝绸眼罩完全遮蔽，只露出柔软诱人的双唇。她身穿飘逸的黑色连帽长袍，长袍上有钻石和水晶装饰，还有刺绣，兜帽半遮面容，袍子前襟敞开，露出紧身黑色蕾丝胸衣包裹的胸部，丝绸般光泽面料紧贴她凹凸有致的曲线身材。胸前垂挂着精致的金色十字架项链。她右手握住一把巨大而华丽的死神镰刀，刀刃为复杂雕花的青铜色新月形锋刃，长木柄上缠绕暗金色饰带，镰刀刃部自然搭靠在她的右肩上，姿态慵懒又充满压迫感。戏剧性的月光轮廓光从背后勾勒出她曼妙身形，皮肤与丝绸面料泛着柔和冷光反光，深邃阴影落在教堂拱顶与柱廊之间。居中中近景构图，低角度仰视视角突出她既危险又极具诱惑的存在感，超现实细节，电影感光影与微妙大气雾感，空气中漂浮着发光粒子，写实摄影风格结合暗黑奇幻氛围，高对比度，细腻皮肤纹理与布料光泽，真实人体比例与东方女性面部特征鲜明。"
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP文本编码"
+    }
+  }
+}
