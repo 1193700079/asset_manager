@@ -35,7 +35,7 @@ export default function ReferenceLibrary({ characterId }: Props) {
   };
 
   const handleAdd = async (item: any) => {
-    const fullUrl = `http://localhost:3001${item.image_url}`;
+    const fullUrl = `http://localhost:8899${item.image_url}`;
     await api.addRefImage({
       character_id: characterId,
       image_url: fullUrl,
@@ -82,7 +82,7 @@ export default function ReferenceLibrary({ characterId }: Props) {
           {searchResults.length > 0 && (
             <div className="ref-search-results">
               {searchResults.map((item, i) => {
-                const fullUrl = `http://localhost:3001${item.image_url}`;
+                const fullUrl = `http://localhost:8899${item.image_url}`;
                 const isAdded = existingUrls.has(fullUrl);
                 return (
                   <div key={i} className={`ref-search-card ${isAdded ? 'added' : ''}`}>

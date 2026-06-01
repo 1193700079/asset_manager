@@ -4,7 +4,7 @@ import { api } from '../api/client';
 import Modal from './Modal';
 import './AssetLibrary.css';
 
-const VFE_BASE = 'http://localhost:3001';
+const VFE_BASE = 'http://localhost:8899';
 
 const DIM_LABELS: Record<string, string> = {
   '01_scene': '场景', '02_shot': '镜头', '03_nudity': '裸露', '04_clothing': '服装',
