@@ -1,0 +1,10 @@
+.video-grid { columns: 220px; column-gap: 10px; }
+.video-card {
+  position: relative; break-inside: avoid; margin-bottom: 10px;
+  background: #16213e; border-radius: 8px; overflow: hidden;
+  border: 1px solid #0f3460;
+}
+.video-card video {
+  width: 100%; height: auto; display: block; cursor: pointer;
+  min-height: 120px; background: #0d1117;
+}

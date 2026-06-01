@@ -1,0 +1,39 @@
+.media-grid { columns: 220px; column-gap: 10px; }
+.media-card {
+  position: relative; break-inside: avoid; margin-bottom: 10px;
+  background: #16213e; border-radius: 8px; overflow: hidden;
+  border: 1px solid #0f3460;
+}
+.media-card img {
+  width: 100%; height: auto; display: block; cursor: pointer;
+}
+.card-badge {
+  position: absolute; top: 4px; left: 4px;
+  background: rgba(15,52,96,0.85); color: #eee;
+  padding: 2px 6px; border-radius: 3px; font-size: 10px;
+}
+.card-del {
+  position: absolute; top: 4px; right: 4px;
+  background: rgba(233,69,96,0.85); color: #fff; border: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.2s;
+}
+.media-card:hover .card-del { opacity: 1; }
+.card-name {
+  padding: 4px 6px; font-size: 10px; color: #aaa;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.empty { color: #666; font-size: 14px; padding: 40px 0; }
+.media-card.trashed { opacity: 0.6; border-color: #e94560; }
+.card-restore {
+  position: absolute; top: 4px; right: 4px;
+  background: rgba(46,204,113,0.9); color: #fff; border: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.2s;
+}
+.media-card.trashed:hover .card-restore { opacity: 1; }
+.media-card.trashed:hover .card-del { opacity: 0; }

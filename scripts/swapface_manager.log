@@ -19,3 +19,130 @@
 [2026-05-30T15:21:24.729066] "GET /api/index HTTP/1.1" 200 -
 [2026-05-30T15:21:25.299809] "GET /static/upload_b7306c433409390789660e6b8011bc79.jpg HTTP/1.1" 404 -
 [2026-05-30T15:21:52.439351] "GET /static/upload_b7306c433409390789660e6b8011bc79.jpg HTTP/1.1" 404 -
+[2026-05-30T15:29:13.946729] Character Manager running at http://0.0.0.0:9091
+[2026-05-30T15:29:13.949191] Characters: 426
+[2026-05-30T15:29:16.051714] "GET /api/index HTTP/1.1" 200 -
+[2026-05-30T15:31:33.789277] "GET / HTTP/1.1" 200 -
+[2026-05-30T15:31:33.955799] "GET /api/index HTTP/1.1" 200 -
+[2026-05-30T15:31:34.582319] "GET /static/upload_b7306c433409390789660e6b8011bc79.jpg HTTP/1.1" 404 -
+[2026-05-30T15:31:38.411964] "GET / HTTP/1.1" 200 -
+[2026-05-30T15:31:38.633482] "GET /api/index HTTP/1.1" 200 -
+[2026-05-30T15:31:39.079105] "GET /favicon.ico HTTP/1.1" 404 -
+[2026-05-30T15:31:39.274094] "GET /static/upload_b7306c433409390789660e6b8011bc79.jpg HTTP/1.1" 404 -
+[2026-05-30T15:34:32.288819] Character Manager running at http://0.0.0.0:9091
+[2026-05-30T15:34:32.291359] Characters: 426
+[2026-05-30T15:34:34.328937] "GET /api/index HTTP/1.1" 200 -
+[2026-05-30T15:34:41.155944] [SOFT-DELETE] name=Sofia Ricci, url=https://ecjoy.oss-ap-southeast-1.aliyuncs.com/candy_ai/girls/03247861_0_SaveGram.App_467702145_2051969808585677_3613815483553209820_n.png
+[2026-05-30T15:34:41.458462] "GET /api/index HTTP/1.1" 200 -
+[2026-05-30T15:35:20.047836] Character Manager running at http://0.0.0.0:9091
+[2026-05-30T15:35:20.050466] Characters: 426
+[2026-05-30T15:35:26.701848] "GET /api/index HTTP/1.1" 200 -
+[2026-05-30T15:35:26.793468] [SOFT-DELETE] name=Sofia Ricci, url=https://ecjoy.oss-ap-southeast-1.aliyuncs.com/candy_ai/girls/03247861_0_SaveGram.App_467702145_2051969808585677_3613815483553209820_n.png
+[2026-05-30T15:35:27.074055] "POST /api/delete HTTP/1.1" 200 -
+[2026-05-30T15:35:27.731040] "GET /api/index HTTP/1.1" 200 -
+[2026-05-30T15:36:10.888151] [SOFT-DELETE] name=Sofia Ricci, url=https://ecjoy.oss-ap-southeast-1.aliyuncs.com/candy_ai/girls/03247861_0_SaveGram.App_525340510_18021028730724382_5314517358057348125_n.png
+[2026-05-30T15:36:11.168935] "POST /api/delete HTTP/1.1" 200 -
+[2026-05-30T15:36:11.819037] "GET /api/index HTTP/1.1" 200 -
+[2026-05-30T15:36:11.848003] [RESTORE] name=Sofia Ricci, url=https://ecjoy.oss-ap-southeast-1.aliyuncs.com/candy_ai/girls/03247861_0_SaveGram.App_467702145_2051969808585677_3613815483553209820_n.png
+[2026-05-30T15:36:12.134367] "POST /api/restore HTTP/1.1" 200 -
+[2026-05-30T15:36:12.441343] "GET /api/index HTTP/1.1" 200 -
+[2026-05-30T15:36:16.117322] [EMPTY-TRASH] name=Sofia Ricci
+[2026-05-30T15:36:16.398033] "POST /api/trash/empty HTTP/1.1" 200 -
+[2026-05-30T15:36:17.047706] "GET /api/index HTTP/1.1" 200 -
+[2026-05-30T15:41:22.058068] Character Manager running at http://0.0.0.0:9091
+[2026-05-30T15:41:22.060764] Characters: 426
+[2026-05-30T15:41:25.897453] "GET /api/index HTTP/1.1" 200 -
+[2026-05-30T15:41:31.213886] "GET / HTTP/1.1" 200 -
+[2026-05-30T15:41:34.297608] "GET / HTTP/1.1" 200 -
+[2026-05-30T15:41:41.180619] "GET / HTTP/1.1" 200 -
+[2026-05-30T15:47:26.781569] "GET / HTTP/1.1" 200 -
+[2026-05-30T15:47:27.288826] "GET /api/index HTTP/1.1" 200 -
+[2026-05-30T15:47:27.989226] "GET /favicon.ico HTTP/1.1" 404 -
+[2026-05-30T15:47:28.141387] "GET /static/upload_b7306c433409390789660e6b8011bc79.jpg HTTP/1.1" 404 -
+[2026-05-30T15:56:44.670526] Character Manager running at http://0.0.0.0:9091
+[2026-05-30T15:56:44.673384] Characters: 426
+[2026-05-30T15:56:48.653165] "GET / HTTP/1.1" 200 -
+[2026-05-30T15:57:02.328822] "GET / HTTP/1.1" 200 -
+[2026-05-30T15:57:02.588572] "GET /api/index HTTP/1.1" 200 -
+[2026-05-30T15:57:02.917026] "GET /favicon.ico HTTP/1.1" 404 -
+[2026-05-30T15:57:03.253364] "GET /static/upload_b7306c433409390789660e6b8011bc79.jpg HTTP/1.1" 404 -
+[2026-05-30T16:02:09.520368] Character Manager running at http://0.0.0.0:9091
+[2026-05-30T16:02:09.523493] Characters: 426
+[2026-05-30T16:02:13.222444] "GET / HTTP/1.1" 200 -
+[2026-05-30T16:02:17.129978] "GET / HTTP/1.1" 200 -
+[2026-05-30T16:02:17.581164] "GET /api/index HTTP/1.1" 200 -
+[2026-05-30T16:02:18.037168] "GET /favicon.ico HTTP/1.1" 404 -
+[2026-05-30T16:02:18.254170] "GET /static/upload_b7306c433409390789660e6b8011bc79.jpg HTTP/1.1" 404 -
+[2026-05-30T16:03:08.159686] "GET / HTTP/1.1" 200 -
+[2026-05-30T16:03:19.518274] "GET / HTTP/1.1" 200 -
+[2026-05-30T16:03:19.687758] "GET /api/index HTTP/1.1" 200 -
+[2026-05-30T16:03:20.024199] "GET /favicon.ico HTTP/1.1" 404 -
+[2026-05-30T16:03:32.961893] "GET /static/upload_b7306c433409390789660e6b8011bc79.jpg HTTP/1.1" 404 -
+[2026-05-30T16:08:11.869648] "GET /static/upload_b7306c433409390789660e6b8011bc79.jpg HTTP/1.1" 404 -
+[2026-05-30T17:15:01.076219] Character Manager running at http://0.0.0.0:9091
+[2026-05-30T17:15:01.079172] Characters: 426
+[2026-05-30T17:15:05.132709] "GET / HTTP/1.1" 200 -
+[2026-05-30T17:15:05.146101] "GET /api/swapface/pool HTTP/1.1" 200 -
+[2026-05-30T17:17:21.794847] "GET /api/swapface/annotated HTTP/1.1" 200 -
+[2026-05-30T17:48:40.719493] "GET / HTTP/1.1" 200 -
+[2026-05-30T17:48:40.898707] "GET /api/index HTTP/1.1" 200 -
+[2026-05-30T17:48:41.229958] "GET /favicon.ico HTTP/1.1" 404 -
+[2026-05-30T17:48:41.439989] "GET /api/swapface/annotated HTTP/1.1" 200 -
+[2026-05-30T17:48:41.509904] "GET /static/upload_b7306c433409390789660e6b8011bc79.jpg HTTP/1.1" 404 -
+[2026-05-30T17:55:38.811185] [SOFT-DELETE] name=Adriana Wells, url=https://ecjoy.oss-ap-southeast-1.aliyuncs.com/candy_ai/girls/pose/49630219_0/edited_10.mp4
+[2026-05-30T17:56:07.978926] "GET /favicon.ico HTTP/1.1" 404 -
+[2026-05-30T17:56:40.249194] [SOFT-DELETE] name=Adriana Wells, url=https://ecjoy.oss-ap-southeast-1.aliyuncs.com/candy_ai/girls/49630219_0_v1.mp4
+[2026-05-30T18:03:30.484645] Character Manager running at http://0.0.0.0:9091
+[2026-05-30T18:03:30.487519] Characters: 426
+[2026-05-30T18:03:34.221813] "GET / HTTP/1.1" 200 -
+[2026-05-30T18:05:54.953201] "GET /api/vfe/search?limit=3 HTTP/1.1" 200 -
+[2026-05-30T18:08:43.110835] Character Manager running at http://0.0.0.0:9091
+[2026-05-30T18:08:43.113573] Characters: 426
+[2026-05-30T18:08:47.743329] "GET / HTTP/1.1" 200 -
+[2026-05-30T18:08:47.892758] "GET /api/ref-images?character_id=1 HTTP/1.1" 200 -
+[2026-05-30T18:08:51.887941] [REF-IMAGE] added id=1 char_id=249
+[2026-05-30T18:08:51.891411] "POST /api/ref-images HTTP/1.1" 200 -
+[2026-05-30T18:08:55.718003] "GET /api/ref-images?character_id=249 HTTP/1.1" 200 -
+[2026-05-30T18:08:58.825310] [REF-IMAGE] deleted id=1
+[2026-05-30T18:08:58.828982] "POST /api/ref-images/delete HTTP/1.1" 200 -
+[2026-05-30T18:09:41.377455] "GET / HTTP/1.1" 200 -
+[2026-05-30T18:09:41.698920] "GET /favicon.ico HTTP/1.1" 404 -
+[2026-05-30T18:09:59.019855] "GET / HTTP/1.1" 200 -
+[2026-05-30T18:46:11.670086] "GET /api/characters/list HTTP/1.1" 200 -
+[2026-05-31T11:33:46.195220] Character Manager running at http://0.0.0.0:9091
+[2026-05-31T11:33:46.198007] Characters: 424
+[2026-05-31T11:33:51.922807] "GET / HTTP/1.1" 200 -
+[2026-05-31T11:35:28.805803] "GET /api/asset-library/tags HTTP/1.1" 200 -
+[2026-05-31T11:35:28.885041] "GET /api/asset-library/images?dimension=01_scene&tag=bedroom&limit=3 HTTP/1.1" 200 -
+[2026-05-31T11:42:44.934460] "GET / HTTP/1.1" 200 -
+[2026-05-31T11:42:45.264383] "GET /favicon.ico HTTP/1.1" 404 -
+[2026-06-01T00:40:42.077053] code 400, message Bad request version ('\x00\x00\x00\x03\x00\x05nmap\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00j\x00\x00\x00\x7f')
+[2026-06-01T00:40:42.080744] " <   d e   = IEEEM  lsqlexec      9.280  RDS#R000000  sqli   3          nmap  nmap ol         =tlitcp      h     nmap            j   " 400 -
+[2026-06-01T00:40:48.283803] code 400, message Bad request syntax ('\x002Ð\x01\x00\x01\x00,\x10A\x00\x04\x11^\x00\x04\x11m\x00\x04\x11Z\x00\x18\x14\x04\x14\x03\x00\x07$\x07\x00\x08$\x0f\x00\x08\x14@\x00\x08\x14t\x00\x08\x00\x04\x11G')
+[2026-06-01T00:40:48.287124] " 2Ð  ,A ^ m Z  $ $ @ t  G" 400 -
+[2026-06-01T00:40:51.958142] "GET / HTTP/1.0" 200 -
+[2026-06-01T00:44:59.648885] "GET /nmaplowercheck1780245899 HTTP/1.1" 404 -
+[2026-06-01T00:44:59.649790] "GET / HTTP/1.0" 200 -
+[2026-06-01T00:45:00.299074] "GET /evox/about HTTP/1.1" 404 -
+[2026-06-01T00:45:00.648859] "GET /HNAP1 HTTP/1.1" 404 -
+[2026-06-01T00:45:02.067118] code 400, message Bad HTTP/0.9 request type ('\x16\x03\x01\x02\x00\x01\x00\x01ü\x03\x03\x81Æ7')
+[2026-06-01T00:45:02.407894] "  üÆ7½¬ÃõFý)8ò^ÀHºYýÕÑtÖÜ~ø<r " 400 -
+[2026-06-01T00:45:09.729651] code 400, message Bad request version ("\x18\x7fPÔ\x1a\x03EÙÂÊ\x00\x9c\x13\x02\x13\x03\x13\x01\x003\x009\x005\x00/À,À0\x00£\x00\x9fÌ©Ì¨ÌªÀ¯À\xadÀ£À\x9fÀ]ÀaÀWÀSÀ+À/\x00¢\x00\x9eÀ®À¬À¢À\x9eÀ\\À`ÀVÀRÀ$À(\x00k\x00jÀsÀw\x00Ä\x00ÃÀ#À'\x00g\x00@ÀrÀv\x00¾\x00½À")
+[2026-06-01T00:45:10.067897] "  üïílØ½ü>ÎU|µ(][¢³@¬3)SP ÙÊ¨Zé×Hµv¤æíNªy PÔEÙÂÊ  3 9 5 /À,À0 £ Ì©Ì¨ÌªÀ¯À­À£ÀÀ]ÀaÀWÀSÀ+À/ ¢ À®À¬À¢ÀÀ\À`ÀVÀRÀ$À( k jÀsÀw Ä ÃÀ#À' g @ÀrÀv ¾ ½À" 400 -
+[2026-06-01T00:45:30.324191] "GET / HTTP/1.0" 200 -
+[2026-06-01T00:45:30.823847] "GET / HTTP/1.1" 200 -
+[2026-06-01T00:46:20.990624] code 400, message Bad request version ('\x00\x00\x00\x03\x00\x05nmap\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00j\x00\x00\x00\x7f')
+[2026-06-01T00:46:21.323148] " <   d e   = IEEEM  lsqlexec      9.280  RDS#R000000  sqli   3          nmap  nmap ol         =tlitcp      h     nmap            j   " 400 -
+[2026-06-01T00:46:29.954749] code 400, message Bad request syntax ('\x002Ð\x01\x00\x01\x00,\x10A\x00\x04\x11^\x00\x04\x11m\x00\x04\x11Z\x00\x18\x14\x04\x14\x03\x00\x07$\x07\x00\x08$\x0f\x00\x08\x14@\x00\x08\x14t\x00\x08\x00\x04\x11G')
+[2026-06-01T00:46:30.122874] " 2Ð  ,A ^ m Z  $ $ @ t  G" 400 -
+[2026-06-01T00:46:36.022772] "GET / HTTP/1.0" 200 -
+[2026-06-01T01:19:50.780926] "GET / HTTP/1.0" 200 -
+[2026-06-01T01:20:24.239404] code 400, message Bad request version ("iÒEK¸.tçq\x00\x9c\x13\x02\x13\x03\x13\x01\x003\x009\x005\x00/À,À0\x00£\x00\x9fÌ©Ì¨ÌªÀ¯À\xadÀ£À\x9fÀ]ÀaÀWÀSÀ+À/\x00¢\x00\x9eÀ®À¬À¢À\x9eÀ\\À`ÀVÀRÀ$À(\x00k\x00jÀsÀw\x00Ä\x00ÃÀ#À'\x00g\x00@ÀrÀv\x00¾\x00½À")
+[2026-06-01T01:20:24.242590] "  ü7`ÒD?u¤ä×t0Lâ%:f·Û¶9IaÏhv.E Íq±,Û]þÿÈ½9&*ÐÄiÒEK¸.tçq  3 9 5 /À,À0 £ Ì©Ì¨ÌªÀ¯À­À£ÀÀ]ÀaÀWÀSÀ+À/ ¢ À®À¬À¢ÀÀ\À`ÀVÀRÀ$À( k jÀsÀw Ä ÃÀ#À' g @ÀrÀv ¾ ½À" 400 -
+[2026-06-01T01:20:36.762734] "GET /nmaplowercheck1780247980 HTTP/1.1" 404 -
+[2026-06-01T01:20:37.013042] "GET /HNAP1 HTTP/1.1" 404 -
+[2026-06-01T01:20:43.644470] "GET /evox/about HTTP/1.1" 404 -
+[2026-06-01T01:21:23.900587] code 400, message Bad request syntax ('\x16\x03\x01\x02\x00\x01\x00\x01ü\x03\x03ìâptÇ\x17')
+[2026-06-01T01:21:23.903926] "  üìâptÇ" 400 -
+[2026-06-01T01:21:48.916590] "GET / HTTP/1.0" 200 -
+[2026-06-01T01:21:49.116504] "GET / HTTP/1.1" 200 -

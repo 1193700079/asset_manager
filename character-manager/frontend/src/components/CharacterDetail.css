@@ -1,0 +1,24 @@
+.char-header { margin-bottom: 20px; }
+.char-header h1 { font-size: 24px; }
+.char-desc { font-size: 13px; color: #aaa; margin-top: 6px; max-width: 700px; line-height: 1.5; }
+.char-attrs { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.attr-tag { background: #0f3460; padding: 3px 10px; border-radius: 12px; font-size: 11px; }
+.char-stats { font-size: 13px; color: #aaa; margin-top: 4px; }
+.section-title {
+  font-size: 14px; color: #aaa; margin: 16px 0 8px;
+  border-bottom: 1px solid #0f3460; padding-bottom: 4px;
+  display: flex; align-items: center; gap: 8px;
+}
+.trash-title .trash-actions { margin-left: auto; display: flex; gap: 6px; }
+.trash-toggle {
+  background: none; border: 1px solid #e94560; color: #e94560;
+  padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;
+}
+.trash-toggle:hover, .trash-toggle.active { background: #e94560; color: #fff; }
+.btn-sm {
+  background: #0f3460; color: #eee; border: none;
+  padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;
+}
+.btn-sm:hover { background: #e94560; }
+.btn-red { background: #c0392b; }
+.btn-red:hover { background: #e74c3c; }

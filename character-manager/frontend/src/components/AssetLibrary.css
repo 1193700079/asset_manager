@@ -1,0 +1,84 @@
+.lib-overlay {
+  display: flex; position: fixed; top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.92); z-index: 10001; overflow: auto;
+}
+.lib-panel {
+  max-width: 1200px; margin: 20px auto; padding: 20px;
+  background: #1a1a2e; border-radius: 12px; min-height: 90vh; width: 100%;
+}
+.lib-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.lib-header h2 { font-size: 20px; color: #4fc3f7; }
+.lib-total { font-size: 12px; color: #aaa; }
+.lib-close {
+  margin-left: auto; background: #0f3460; color: #eee; border: none;
+  padding: 6px 16px; border-radius: 4px; cursor: pointer; font-size: 13px;
+}
+.lib-close:hover { background: #e94560; }
+.lib-search { margin-bottom: 16px; }
+.lib-search input {
+  width: 100%; padding: 8px 14px;
+  background: #0f3460; border: 1px solid #1a3a6e;
+  color: #eee; border-radius: 6px; font-size: 14px;
+}
+.lib-dim-section { margin-bottom: 12px; }
+.lib-dim-label {
+  font-size: 12px; color: #4fc3f7; font-weight: bold;
+  margin-bottom: 4px; text-transform: uppercase;
+}
+.lib-dim-label.priority { color: #e94560; font-size: 13px; }
+.lib-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.lib-dim-group { display: inline-flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.lib-dim-prefix { font-size: 10px; color: #666; margin-right: 2px; }
+.lib-tag {
+  background: #16213e; color: #ccc; border: 1px solid #0f3460;
+  padding: 3px 10px; border-radius: 14px; font-size: 11px;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.lib-tag:hover { background: #0f3460; color: #fff; border-color: #4fc3f7; }
+.lib-tag.active { background: #e94560; color: #fff; border-color: #e94560; }
+.tag-count { color: #888; font-size: 10px; margin-left: 2px; }
+.lib-tag.active .tag-count { color: #fdd; }
+.lib-tag-more { font-size: 10px; color: #666; }
+.lib-filters {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 12px 0 8px; font-size: 13px; color: #aaa;
+}
+.filter-chip {
+  background: #e94560; color: #fff;
+  padding: 2px 8px; border-radius: 10px;
+  font-size: 10px; cursor: pointer;
+}
+.filter-chip:hover { background: #c0392b; }
+.lib-results-header { font-size: 12px; color: #aaa; margin-bottom: 8px; }
+.lib-results { columns: 240px; column-gap: 10px; }
+.lib-card {
+  break-inside: avoid; margin-bottom: 10px;
+  background: #16213e; border-radius: 8px; overflow: hidden;
+  border: 1px solid #0f3460;
+}
+.lib-card img { width: 100%; height: auto; display: block; cursor: pointer; }
+.lib-card-actions {
+  display: flex; gap: 4px; padding: 4px 6px; background: #0f3460;
+  border-bottom: 1px solid #1a3a6e;
+}
+.lib-card-btn {
+  background: #1a3a6e; color: #ccc; border: none;
+  padding: 3px 8px; border-radius: 3px; font-size: 10px;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.lib-card-btn:hover { background: #4fc3f7; color: #000; }
+.lib-card-btn.copied { background: #27ae60; color: #fff; }
+.lib-card-del { margin-left: auto; }
+.lib-card-del:hover { background: #e94560 !important; color: #fff !important; }
+.lib-card-info { padding: 8px; }
+.lib-card-prompt {
+  font-size: 11px; color: #8bc34a; line-height: 1.5;
+  word-break: break-word;
+}
+.lib-card-desc { font-size: 10px; color: #aaa; margin-top: 4px; line-height: 1.3; }
+.lib-card-dims { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+.lib-card-dim-tag {
+  background: #0f3460; color: #ccc;
+  padding: 1px 6px; border-radius: 8px; font-size: 9px;
+}

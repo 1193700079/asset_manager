@@ -1,0 +1,70 @@
+.ref-section { margin-top: 16px; }
+.ref-search-panel {
+  background: #1a2332; border: 1px solid #2a4a6e;
+  border-radius: 8px; padding: 12px; margin: 8px 0;
+}
+.ref-search-bar { display: flex; gap: 8px; margin-bottom: 8px; }
+.ref-search-bar input {
+  flex: 1; padding: 6px 10px;
+  background: #0f3460; border: 1px solid #1a3a6e;
+  color: #eee; border-radius: 4px; font-size: 13px;
+}
+.ref-search-bar button {
+  background: #4fc3f7; color: #000; border: none;
+  padding: 6px 14px; border-radius: 4px; cursor: pointer;
+  font-size: 12px; font-weight: bold;
+}
+.ref-search-bar button:hover { background: #81d4fa; }
+.ref-search-bar button:disabled { opacity: 0.5; }
+.ref-search-results { columns: 200px; column-gap: 8px; }
+.ref-search-card {
+  break-inside: avoid; margin-bottom: 8px;
+  background: #16213e; border-radius: 6px; overflow: hidden;
+  border: 1px solid #0f3460; position: relative;
+}
+.ref-search-card.added { opacity: 0.5; }
+.ref-search-card img { width: 100%; height: auto; display: block; }
+.ref-search-info { padding: 6px 8px; }
+.ref-search-name { font-size: 10px; color: #aaa; }
+.ref-search-prompt {
+  font-size: 10px; color: #8bc34a; margin-top: 2px;
+  display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+.ref-add-btn {
+  position: absolute; top: 4px; right: 4px;
+  background: rgba(46,204,113,0.9); color: #fff; border: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.2s;
+}
+.ref-search-card:hover .ref-add-btn { opacity: 1; }
+.ref-added-badge {
+  position: absolute; top: 4px; right: 4px;
+  background: rgba(39,174,96,0.9); color: #fff;
+  padding: 2px 8px; border-radius: 3px; font-size: 10px;
+}
+.ref-list { columns: 200px; column-gap: 8px; }
+.ref-card {
+  break-inside: avoid; margin-bottom: 8px;
+  background: #16213e; border-radius: 6px; overflow: hidden;
+  border: 1px solid #0f3460; position: relative;
+}
+.ref-card img { width: 100%; height: auto; display: block; }
+.ref-remove {
+  position: absolute; top: 4px; right: 4px;
+  background: rgba(233,69,96,0.9); color: #fff; border: none;
+  width: 20px; height: 20px; border-radius: 50%;
+  cursor: pointer; font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.2s;
+}
+.ref-card:hover .ref-remove { opacity: 1; }
+.ref-info { padding: 6px 8px; }
+.ref-name { font-size: 10px; color: #aaa; }
+.ref-prompt {
+  font-size: 10px; color: #8bc34a; margin-top: 2px;
+  display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
