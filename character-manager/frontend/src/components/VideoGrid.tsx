@@ -1,31 +1,65 @@
 import { useRef } from 'react';
+import { api } from '../api/client';
 import './VideoGrid.css';
 
 interface Props {
   videos: string[];
+  characterName: string;
+  characterId: number;
+  mediaStatusMap?: Record<string, string>;
 }
 
-export default function VideoGrid({ videos }: Props) {
+export default function VideoGrid({ videos, characterName, characterId, onRefresh, mediaStatusMap }: Props & { onRefresh: () => void }) {
   if (!videos.length) return <div className="empty">No videos</div>;
+
+  const handleDelete = async (e: React.MouseEvent, url: string) => {
+    e.stopPropagation();
+    if (!confirm('Move video to trash?')) return;
+    await api.softDelete(characterName, url);
+    onRefresh();
+  };
+
+  const handleStatusToggle = async (e: React.MouseEvent, url: string) => {
+    e.stopPropagation();
+    const cycle: Record<string, string> = { pending: 'online', online: 'pre_release', pre_release: 'pending' };
+    const current = mediaStatusMap?.[url] || 'pending';
+    const next = cycle[current] || 'pending';
+    await api.updateMediaStatus(characterId, url, next);
+    onRefresh();
+  };
+
+  const statusIcons: Record<string, string> = { online: '🟢', pre_release: '🟡', pending: '⚪' };
 
   return (
     <div className="video-grid">
       {videos.map((url, i) => {
         const fname = url.split('/').pop()?.split('?')[0] || '';
+        const status = mediaStatusMap?.[url] || 'pending';
         return (
-          <VideoCard key={`${url}-${i}`} url={url} fname={fname} />
+          <VideoCard key={`${url}-${i}`} url={url} fname={fname} status={status}
+            onDelete={(e) => handleDelete(e, url)}
+            onStatusToggle={(e) => handleStatusToggle(e, url)}
+            statusIcon={statusIcons[status] || '⚪'}
+          />
         );
       })}
     </div>
   );
 }
 
-function VideoCard({ url, fname }: { url: string; fname: string }) {
+function VideoCard({ url, fname, status, onDelete, onStatusToggle, statusIcon }: {
+  url: string; fname: string; status: string;
+  onDelete: (e: React.MouseEvent) => void;
+  onStatusToggle: (e: React.MouseEvent) => void;
+  statusIcon: string;
+}) {
   const vidRef = useRef<HTMLVideoElement>(null);
 
   return (
-    <div className="video-card">
+    <div className={`video-card media-status-${status}`}>
       <div className="card-badge">video</div>
+      <button className="card-status-btn" onClick={onStatusToggle} title={`状态: ${status}`}>{statusIcon}</button>
+    <button className="card-del" onClick={onDelete}>✕</button>
       <video
         ref={vidRef}
         src={url}

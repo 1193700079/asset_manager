@@ -1,10 +1,23 @@
-.video-grid { columns: 220px; column-gap: 10px; }
+.video-grid { columns: 100px; column-gap: 6px; }
 .video-card {
-  position: relative; break-inside: avoid; margin-bottom: 10px;
-  background: #16213e; border-radius: 8px; overflow: hidden;
+  position: relative; break-inside: avoid; margin-bottom: 8px;
+  background: #16213e; border-radius: 6px; overflow: hidden;
   border: 1px solid #0f3460;
 }
 .video-card video {
   width: 100%; height: auto; display: block; cursor: pointer;
-  min-height: 120px; background: #0d1117;
+  min-height: 80px; background: #0d1117;
+}
+.video-card .card-del {
+  position: absolute; top: 4px; right: 4px;
+  background: rgba(233,69,96,0.85); color: #fff; border: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.2s;
+}
+.video-card:hover .card-del { opacity: 1; }
+.card-name {
+  padding: 4px 6px; font-size: 10px; color: #aaa;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }

@@ -1,7 +1,7 @@
-.media-grid { columns: 220px; column-gap: 10px; }
+.media-grid { columns: 90px; column-gap: 6px; }
 .media-card {
-  position: relative; break-inside: avoid; margin-bottom: 10px;
-  background: #16213e; border-radius: 8px; overflow: hidden;
+  position: relative; break-inside: avoid; margin-bottom: 8px;
+  background: #16213e; border-radius: 6px; overflow: hidden;
   border: 1px solid #0f3460;
 }
 .media-card img {
@@ -21,6 +21,15 @@
   opacity: 0; transition: opacity 0.2s;
 }
 .media-card:hover .card-del { opacity: 1; }
+.card-avatar-btn {
+  position: absolute; top: 30px; right: 4px;
+  background: rgba(52,152,219,0.9); color: #fff; border: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.2s;
+}
+.media-card:hover .card-avatar-btn { opacity: 1; }
 .card-name {
   padding: 4px 6px; font-size: 10px; color: #aaa;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;

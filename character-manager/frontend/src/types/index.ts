@@ -4,6 +4,9 @@ export interface CharacterIndex {
   description: string;
   attributes: Record<string, string>;
   content_rating: string;
+  character_status: 'online' | 'pre_release' | 'pending';
+  avatar_url: string;
+  voice_id: string;
   profile_images: string[];
   profile_videos: string[];
   generated_images: string[];
@@ -12,6 +15,7 @@ export interface CharacterIndex {
   trash_videos: string[];
   trash_generated: string[];
   trash_all: string[];
+  media_status_map: Record<string, 'online' | 'pre_release' | 'pending'>;
 }
 
 export interface CharacterListItem {
@@ -60,4 +64,7 @@ export interface TagCloudDimension {
 export interface TagCloud {
   total_images: number;
   dimensions: Record<string, TagCloudDimension[]>;
+  error?: string;
+  _full_count?: number;
+  _shown_count?: number;
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { CharacterIndex, CategoryCount } from './types';
-import { api } from './api/client';
+import { api, getDataSource, setDataSource } from './api/client';
 import Sidebar from './components/Sidebar';
 import CharacterDetail from './components/CharacterDetail';
 import AssetLibrary from './components/AssetLibrary';
@@ -14,6 +14,8 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showLibrary, setShowLibrary] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [dataSource, setDataSourceState] = useState<string>(getDataSource());
+  const [sources, setSources] = useState<string[]>([]);
 
   const loadData = useCallback(async () => {
     try {
@@ -31,6 +33,22 @@ export default function App() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    api.getDataSources()
+      .then(r => setSources(r.sources))
+      .catch(e => console.error('Failed to load data sources:', e));
+  }, []);
+
+  const handleDataSourceChange = useCallback((next: string) => {
+    setDataSource(next);
+    setDataSourceState(next);
+    setActiveName(null);
+    setActiveCat(null);
+    setSearchQuery('');
+    setLoading(true);
+    loadData();
+  }, [loadData]);
 
   const filteredNames = Object.keys(index)
     .filter(n => {
@@ -51,6 +69,9 @@ export default function App() {
         activeName={activeName}
         activeCat={activeCat}
         searchQuery={searchQuery}
+        dataSource={dataSource}
+        sources={sources}
+        onDataSourceChange={handleDataSourceChange}
         onSelect={setActiveName}
         onCategoryChange={setActiveCat}
         onSearchChange={setSearchQuery}

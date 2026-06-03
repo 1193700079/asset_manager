@@ -11,6 +11,11 @@ hash_cache.db-shm
 __pycache__/
 *.pyc
 
+# Secrets / env
+.env
+*.env
+!.env.example
+
 # OS junk
 .DS_Store
 Thumbs.db
@@ -19,3 +24,16 @@ Thumbs.db
 node_modules/
 video-frame-extractor/dist/
 character-manager/frontend/dist/
+
+# Model weights (large binary)
+character-manager/backend/models/weights/
+
+# Logs
+*.log
+agentbay.log
+
+# Build artifacts
+*.tsbuildinfo
+
+# Tool config
+.qoder/

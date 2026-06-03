@@ -1,5 +1,6 @@
 import json
 from fastapi import APIRouter, Query
+from pydantic import BaseModel
 import psycopg2.extras
 from database import get_conn, put_conn
 from models import CharacterBase, CharacterOut, CharacterListItem, CategoryCount
@@ -111,5 +112,51 @@ async def delete_character(name: str):
             )
         conn.commit()
         return {"status": "ok"}
+    finally:
+        put_conn(conn)
+
+
+class StatusUpdateRequest(BaseModel):
+    character_id: int
+    character_status: str  # online | pre_release | pending
+
+
+@router.put("/status")
+async def update_character_status(data: StatusUpdateRequest):
+    """Update a character's lifecycle status: online, pre_release, or pending."""
+    valid_statuses = {"online", "pre_release", "pending"}
+    if data.character_status not in valid_statuses:
+        return {"status": "error", "message": f"Invalid status. Must be one of: {valid_statuses}"}
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE characters SET character_status = %s WHERE id = %s",
+                (data.character_status, data.character_id),
+            )
+        conn.commit()
+        return {"status": "ok", "character_status": data.character_status}
+    finally:
+        put_conn(conn)
+
+
+class VoiceUpdateRequest(BaseModel):
+    character_id: int
+    voice_id: str  # default audio file URL (empty string clears it)
+
+
+@router.put("/voice")
+async def update_character_voice(data: VoiceUpdateRequest):
+    """Set a character's default audio. voice_id is an audio file URL (or empty to clear)."""
+    voice_id = (data.voice_id or "").strip() or None
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE characters SET voice_id = %s WHERE id = %s",
+                (voice_id, data.character_id),
+            )
+        conn.commit()
+        return {"status": "ok", "voice_id": voice_id}
     finally:
         put_conn(conn)

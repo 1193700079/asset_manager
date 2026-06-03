@@ -15,21 +15,67 @@
   padding: 6px 16px; border-radius: 4px; cursor: pointer; font-size: 13px;
 }
 .lib-close:hover { background: #e94560; }
+
+/* Error banner */
+.lib-error {
+  background: #5c1a1a; border: 1px solid #e94560; color: #fcc;
+  padding: 8px 14px; border-radius: 6px; margin-bottom: 12px;
+  font-size: 12px; display: flex; align-items: center; gap: 8px;
+}
+.lib-error-dismiss {
+  margin-left: auto; background: none; border: none;
+  color: #fcc; cursor: pointer; font-size: 14px;
+}
+
+/* Search */
 .lib-search { margin-bottom: 16px; }
 .lib-search input {
   width: 100%; padding: 8px 14px;
   background: #0f3460; border: 1px solid #1a3a6e;
   color: #eee; border-radius: 6px; font-size: 14px;
+  box-sizing: border-box;
 }
-.lib-dim-section { margin-bottom: 12px; }
+.lib-search input:focus { border-color: #4fc3f7; outline: none; }
+
+/* Loading */
+.lib-loading {
+  display: flex; align-items: center; gap: 10px;
+  color: #aaa; font-size: 13px; padding: 20px 0;
+}
+.lib-spinner {
+  width: 20px; height: 20px; border: 2px solid #333;
+  border-top-color: #4fc3f7; border-radius: 50%;
+  animation: lib-spin 0.6s linear infinite;
+}
+.lib-spinner-sm { width: 14px; height: 14px; border-width: 2px; }
+@keyframes lib-spin { to { transform: rotate(360deg); } }
+
+/* Dimension sections */
+.lib-dim-section {
+  margin-bottom: 14px; padding-bottom: 10px;
+  border-bottom: 1px solid #16213e;
+}
 .lib-dim-label {
   font-size: 12px; color: #4fc3f7; font-weight: bold;
-  margin-bottom: 4px; text-transform: uppercase;
+  margin-bottom: 6px; text-transform: uppercase;
 }
 .lib-dim-label.priority { color: #e94560; font-size: 13px; }
 .lib-tags { display: flex; flex-wrap: wrap; gap: 4px; }
-.lib-dim-group { display: inline-flex; align-items: center; gap: 2px; flex-wrap: wrap; }
-.lib-dim-prefix { font-size: 10px; color: #666; margin-right: 2px; }
+.lib-dim-group { display: inline-flex; align-items: center; gap: 3px; flex-wrap: wrap; margin-bottom: 4px; vertical-align: top; }
+.lib-dim-group-expanded {
+  display: flex; flex-basis: 100%; width: 100%;
+  align-items: flex-start; gap: 3px; flex-wrap: wrap;
+  margin-bottom: 6px; padding: 6px 8px;
+  background: #16213e; border-radius: 8px;
+  border: 1px solid #1a3a6e;
+  max-height: 160px; overflow-y: auto; position: relative;
+}
+.lib-dim-group-expanded .lib-dim-prefix {
+  align-self: flex-start; padding-top: 4px;
+}
+.lib-dim-prefix { font-size: 10px; color: #888; margin-right: 3px; font-weight: 600; }
+
+/* Tags */
 .lib-tag {
   background: #16213e; color: #ccc; border: 1px solid #0f3460;
   padding: 3px 10px; border-radius: 14px; font-size: 11px;
@@ -37,20 +83,66 @@
 }
 .lib-tag:hover { background: #0f3460; color: #fff; border-color: #4fc3f7; }
 .lib-tag.active { background: #e94560; color: #fff; border-color: #e94560; }
-.tag-count { color: #888; font-size: 10px; margin-left: 2px; }
+.tag-count { color: #888; font-size: 10px; margin-left: 3px; }
 .lib-tag.active .tag-count { color: #fdd; }
-.lib-tag-more { font-size: 10px; color: #666; }
+
+/* Expand/collapse buttons */
+.lib-tag-expand {
+  background: #1a3a6e; color: #4fc3f7; border: 1px dashed #4fc3f7;
+  padding: 3px 10px; border-radius: 14px; font-size: 11px;
+  cursor: pointer; transition: all 0.15s; font-weight: bold;
+}
+.lib-tag-expand:hover { background: #4fc3f7; color: #000; }
+.lib-tag-collapse {
+  background: #2d1f3d; color: #bb86fc; border: 1px solid #bb86fc;
+  padding: 3px 10px; border-radius: 14px; font-size: 11px;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap; flex-shrink: 0;
+}
+.lib-tag-collapse:hover { background: #bb86fc; color: #000; }
+
+/* Toolbar row (collapse + search + count) - sits at top of expanded group */
+.lib-dim-toolbar {
+  display: inline-flex; align-items: center; gap: 8px;
+  flex-basis: 100%; order: -1; padding-bottom: 4px;
+  margin-bottom: 2px;
+  width: 100%;
+}
+.lib-dim-search {
+  background: #0f3460; border: 1px solid #1a3a6e; color: #eee;
+  padding: 3px 10px; border-radius: 12px; font-size: 11px;
+  flex: 1; min-width: 120px;
+}
+.lib-dim-search:focus { border-color: #4fc3f7; outline: none; }
+.lib-dim-expand-count {
+  font-size: 10px; color: #888; white-space: nowrap; flex-shrink: 0;
+}
+
+/* Scrollbar for expanded groups */
+.lib-dim-group-expanded::-webkit-scrollbar { width: 4px; }
+.lib-dim-group-expanded::-webkit-scrollbar-track { background: #0f3460; border-radius: 2px; }
+.lib-dim-group-expanded::-webkit-scrollbar-thumb { background: #4fc3f7; border-radius: 2px; }
+
+/* Filter chips */
 .lib-filters {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  margin: 12px 0 8px; font-size: 13px; color: #aaa;
+  margin: 14px 0 10px; font-size: 13px; color: #aaa;
 }
 .filter-chip {
-  background: #e94560; color: #fff;
-  padding: 2px 8px; border-radius: 10px;
-  font-size: 10px; cursor: pointer;
+  background: #3d1f3d; color: #ddd; border: 1px solid #bb86fc;
+  padding: 3px 10px; border-radius: 12px;
+  font-size: 11px; cursor: pointer; transition: all 0.15s;
 }
-.filter-chip:hover { background: #c0392b; }
-.lib-results-header { font-size: 12px; color: #aaa; margin-bottom: 8px; }
+.filter-chip:hover { background: #c0392b; border-color: #c0392b; color: #fff; }
+.filter-chip-active {
+  background: #e94560; color: #fff; border-color: #e94560;
+}
+.lib-filters-hint { font-size: 10px; color: #666; font-style: italic; }
+
+/* Results */
+.lib-results-header {
+  font-size: 12px; color: #aaa; margin: 12px 0 8px;
+  padding: 6px 10px; background: #16213e; border-radius: 4px;
+}
 .lib-results { columns: 240px; column-gap: 10px; }
 .lib-card {
   break-inside: avoid; margin-bottom: 10px;
@@ -81,4 +173,20 @@
 .lib-card-dim-tag {
   background: #0f3460; color: #ccc;
   padding: 1px 6px; border-radius: 8px; font-size: 9px;
+}
+
+/* Load more */
+.lib-load-more-wrap { text-align: center; padding: 16px 0; }
+.lib-load-more {
+  background: #0f3460; color: #4fc3f7; border: 1px solid #4fc3f7;
+  padding: 10px 32px; border-radius: 6px; cursor: pointer;
+  font-size: 13px; transition: all 0.2s;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.lib-load-more:hover:not(:disabled) { background: #4fc3f7; color: #000; }
+.lib-load-more:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Empty state */
+.empty {
+  text-align: center; color: #666; padding: 40px 0; font-size: 14px;
 }

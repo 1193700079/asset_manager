@@ -3,6 +3,18 @@
   position: fixed; left: 0; top: 0;
   background: #16213e; border-right: 1px solid #0f3460;
 }
+.ds-select {
+  padding: 10px 12px; display: flex; align-items: center; gap: 8px;
+  background: #0f3460; border-bottom: 1px solid #1a3a6e;
+}
+.ds-select label {
+  font-size: 12px; color: #9bb4d4; white-space: nowrap;
+}
+.ds-select select {
+  flex: 1; padding: 5px 8px;
+  background: #16213e; border: 1px solid #1a3a6e;
+  color: #eee; border-radius: 4px; font-size: 13px; cursor: pointer;
+}
 .sidebar h2 {
   padding: 12px 16px; background: #0f3460; font-size: 14px;
   position: sticky; top: 0; z-index: 1;

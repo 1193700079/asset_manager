@@ -1,12 +1,14 @@
 import json
+import signal
+import threading
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import psycopg2.extras
 from config import settings
-from database import init_pool, close_pool, get_conn, put_conn
-from routers import characters_router, media_router, reference_router, asset_library_router
-from services import vfe_client
+from database import init_pool, close_pool, get_conn, put_conn, set_data_source
+from routers import characters_router, media_router, reference_router, asset_library_router, generation_router, scripts_router, comfyui_single_router, avatar_router
+from services import vfe_client, smartstudio_client, script_runner
 
 
 def _parse_json(val):
@@ -23,8 +25,22 @@ def _parse_json(val):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_pool()
+
+    # Kill all running batch script jobs on shutdown
+    def _cleanup():
+        for job in script_runner.list_jobs():
+            if job["status"] == "running":
+                try:
+                    script_runner.kill_job(job["job_id"])
+                except Exception:
+                    pass
+
+    signal.signal(signal.SIGTERM, lambda *_: _cleanup())
+    signal.signal(signal.SIGINT, lambda *_: _cleanup())
+
     yield
     await vfe_client.close_client()
+    await smartstudio_client.close_client()
     close_pool()
 
 
@@ -42,6 +58,28 @@ app.include_router(characters_router)
 app.include_router(media_router)
 app.include_router(reference_router)
 app.include_router(asset_library_router)
+app.include_router(generation_router)
+app.include_router(scripts_router)
+app.include_router(comfyui_single_router)
+app.include_router(avatar_router)
+
+
+@app.middleware("http")
+async def data_source_middleware(request: Request, call_next):
+    requested = request.headers.get("X-Data-Source")
+    if requested in settings.datasources:
+        set_data_source(requested)
+    else:
+        set_data_source(settings.default_data_source)
+    return await call_next(request)
+
+
+@app.get("/api/datasources")
+async def list_datasources():
+    return {
+        "sources": list(settings.datasources.keys()),
+        "default": settings.default_data_source,
+    }
 
 
 @app.get("/api/index")
@@ -51,7 +89,8 @@ async def get_index():
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 """SELECT id, name, category, description, attributes, media,
-                          content_rating, sort_priority
+                          content_rating, sort_priority, avatar_url, voice_id,
+                          COALESCE(character_status, 'pending') as character_status
                    FROM characters
                    WHERE (is_deleted IS NULL OR is_deleted = FALSE)
                    ORDER BY name"""
@@ -91,6 +130,12 @@ async def get_index():
             profile_videos = [m["url"] for m in active if m.get("type") == "video" and m.get("url")]
             swapface_images = [m["url"] for m in active if m.get("type") == "swapface_image" and m.get("url")]
 
+            # Per-media status maps
+            media_status_map: dict[str, str] = {}
+            for m in active:
+                if isinstance(m, dict) and m.get("url"):
+                    media_status_map[m["url"]] = m.get("media_status", "pending")
+
             trash_images = [m["url"] for m in trashed if m.get("type") == "image" and m.get("url")]
             trash_videos = [m["url"] for m in trashed if m.get("type") == "video" and m.get("url")]
             trash_generated = [m["url"] for m in trashed if m.get("type") == "swapface_image" and m.get("url")]
@@ -104,6 +149,9 @@ async def get_index():
                 "description": c["description"] or "",
                 "attributes": attrs,
                 "content_rating": c["content_rating"] or "sfw",
+                "character_status": c["character_status"] or "pending",
+                "avatar_url": c["avatar_url"] or "",
+                "voice_id": c["voice_id"] or "",
                 "profile_images": profile_images,
                 "profile_videos": profile_videos,
                 "generated_images": generated_images,
@@ -112,6 +160,7 @@ async def get_index():
                 "trash_videos": trash_videos,
                 "trash_generated": trash_generated,
                 "trash_all": trash_images + trash_videos + trash_generated,
+                "media_status_map": media_status_map,
             }
         return index
     finally:
@@ -127,3 +176,8 @@ async def rebuild():
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8889)

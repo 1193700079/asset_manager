@@ -8,6 +8,9 @@ interface Props {
   activeName: string | null;
   activeCat: string | null;
   searchQuery: string;
+  dataSource: string;
+  sources: string[];
+  onDataSourceChange: (v: string) => void;
   onSelect: (name: string) => void;
   onCategoryChange: (cat: string | null) => void;
   onSearchChange: (q: string) => void;
@@ -17,11 +20,27 @@ interface Props {
 
 export default function Sidebar({
   names, index, categories, activeName, activeCat,
-  searchQuery, onSelect, onCategoryChange, onSearchChange,
+  searchQuery, dataSource, sources, onDataSourceChange,
+  onSelect, onCategoryChange, onSearchChange,
   onRefresh, onOpenLibrary,
 }: Props) {
   return (
     <div className="sidebar">
+      {sources.length > 1 && (
+        <div className="ds-select">
+          <label>数据源</label>
+          <select
+            value={dataSource}
+            onChange={e => onDataSourceChange(e.target.value)}
+          >
+            {sources.map(s => (
+              <option key={s} value={s}>
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <h2>Characters ({names.length})</h2>
       <div className="sidebar-search">
         <input
@@ -50,7 +69,7 @@ export default function Sidebar({
       <div className="char-list">
         {names.map(n => {
           const c = index[n]!;
-          const thumb = c.profile_images[0] || '';
+          const thumb = c.avatar_url || c.profile_images[0] || '';
           const total = c.all_images.length;
           const vcount = c.profile_videos.length;
           const trashCount = c.trash_all.length;
