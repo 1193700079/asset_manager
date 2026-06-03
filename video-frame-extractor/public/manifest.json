@@ -1,0 +1,16 @@
+{
+  "name": "Video Frame Extractor",
+  "short_name": "Video Frame Extractor",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#151515",
+  "theme_color": "#3e5999",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./icon.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

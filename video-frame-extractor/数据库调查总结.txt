@@ -1,0 +1,240 @@
+================================================================================
+PostgreSQL 数据库 - Prompt 结构调查总结
+================================================================================
+
+项目: video-frame-extractor
+调查日期: 2026-06-02
+状态: 调查完成
+
+================================================================================
+1. 数据库连接信息
+================================================================================
+
+连接参数:
+  Host:     127.0.0.1
+  Port:     5432
+  Database: video_frames
+  User:     video_frames
+  Password: video_frames_pwd
+
+连接字符串:
+  postgres://video_frames:video_frames_pwd@127.0.0.1:5432/video_frames
+
+.env 文件位置:
+  /mnt/cypher/project/asset_manager/video-frame-extractor/.env
+
+================================================================================
+2. 数据库表结构
+================================================================================
+
+主要表:
+  1. saved_frames (23,918 行) - 主表，存储帧数据和 prompt
+  2. prompt_usage (3,362 行) - 记录 prompt 使用日志
+  3. prescreen_feedback - 预筛选反馈数据
+  4. prescreen_history - 批处理历史记录
+
+================================================================================
+3. Prompt 相关字段
+================================================================================
+
+在 saved_frames 表中存储 prompt 的字段:
+
+1. prompt (TEXT)
+   - 内容: 生成的详细图片描述和生成指令
+   - 数据量: 8,913 条记录 (37.26% 的总数)
+   - 来源: AI 模型分析输出 (kimi, qwen 等)
+   - 用途: 用于文生图 (Text-to-Image) 模型生成图片
+   - 特点: 包含详细中文描述 + 英文指令，每条通常几 KB 到几十 KB
+
+2. video_prompt (TEXT)
+   - 内容: 针对视频生成的 prompt
+   - 数据量: 仅 8 条记录
+   - 用途: 文生视频 (Text-to-Video) 模型
+   
+3. i2v_prompt (TEXT)
+   - 内容: 针对视频生成的 prompt (基于图像)
+   - 数据量: 仅 8 条记录
+   - 用途: 图生视频 (Image-to-Video) 模型
+
+相关补充字段:
+  - description: 简短文本描述
+  - model_id: 生成该 prompt 的 AI 模型 (qwen, kimi, etc.)
+  - format: 标注类型 (image_annotation 有 prompt, image_prescreen 没有)
+  - status: 记录状态 (labeled, skipped, etc.)
+  - feedback: 人工反馈 (good, bad, 等)
+  - dimensions: 14 维结构化标注 (JSON 格式)
+
+================================================================================
+4. 数据统计信息
+================================================================================
+
+saved_frames 表:
+  - 总记录数: 23,918
+  - 包含 prompt 的记录: 8,913 (37.26%)
+  - 包含 video_prompt: 8 (0.03%)
+  - 包含 i2v_prompt: 8 (0.03%)
+  - 不同格式 (format): 7 种
+
+按 format 分布:
+  - image_prescreen: 14,814 条 (62.0%) - 预筛选，无 prompt
+  - image_annotation: 8,841 条 (37.0%) - 标注数据，有 prompt
+  - image_skip: 189 条 (0.8%)
+  - jpeg: 59 条 (0.2%)
+  - video: 13 条 (0.1%)
+  - swapface_annotation: 1 条
+  - skip: 1 条
+
+按 model_id 分布 (前 7 个):
+  - qwen: 1,636 条 (618 有 prompt)
+  - qwen-3.5: 1,630 条 (611 有 prompt)
+  - qwen-3.7-plus: 1,607 条 (590 有 prompt)
+  - kimi: 1,602 条 (580 有 prompt)
+  - kimi-k2.5: 1,571 条 (601 有 prompt)
+  - qwen3.6-plus: 10 条 (全部有 prompt)
+  - kimi-k2.6: 7 条 (6 有 prompt)
+
+================================================================================
+5. 如何访问 Prompt 数据
+================================================================================
+
+方法 1: Python + psycopg2 (推荐)
+
+  import psycopg2
+  from psycopg2.extras import RealDictCursor
+  
+  conn = psycopg2.connect(
+      host="127.0.0.1",
+      port=5432,
+      database="video_frames",
+      user="video_frames",
+      password="video_frames_pwd"
+  )
+  
+  with conn.cursor(cursor_factory=RealDictCursor) as cur:
+      cur.execute("""
+          SELECT id, prompt, model_id, created_at
+          FROM saved_frames
+          WHERE prompt IS NOT NULL
+          ORDER BY created_at DESC
+          LIMIT 10
+      """)
+      rows = cur.fetchall()
+      for row in rows:
+          print(row)
+  
+  conn.close()
+
+方法 2: SQL 查询
+
+  # 获取所有 prompt
+  SELECT id, video_path, prompt, model_id, created_at
+  FROM saved_frames
+  WHERE prompt IS NOT NULL
+  ORDER BY created_at DESC
+  LIMIT 100;
+  
+  # 统计 prompt 数据
+  SELECT COUNT(*) as total, COUNT(CASE WHEN prompt IS NOT NULL THEN 1 END) as with_prompt
+  FROM saved_frames;
+
+方法 3: 命令行 psql
+
+  PGPASSWORD="video_frames_pwd" psql -h 127.0.0.1 -U video_frames -d video_frames \
+    -c "SELECT id, prompt FROM saved_frames WHERE prompt IS NOT NULL LIMIT 5;"
+
+================================================================================
+6. 生成的文档文件
+================================================================================
+
+已为您生成以下文档，均存放在项目目录:
+
+1. PostgreSQL_数据库调查报告.md
+   - 完整、详细的数据库调查报告
+   - 包含所有表结构、字段说明、数据样例、SQL 查询示例
+   - 适合深入学习和参考
+
+2. QUICK_REFERENCE.md
+   - 快速参考指南
+   - 包含最常用的连接信息、SQL 查询、Python 代码
+   - 适合快速查阅
+
+3. db_query_example.py
+   - 完整的 Python 示例脚本
+   - 包含数据库连接、查询、统计等功能
+   - 可直接运行: python db_query_example.py
+
+4. 数据库调查总结.txt (本文件)
+   - 综合总结，适合快速了解全貌
+
+================================================================================
+7. 关键发现
+================================================================================
+
+1. Prompt 存储位置: saved_frames.prompt 字段
+
+2. Prompt 数据特性:
+   - 数据量: 约 8,913 条记录
+   - 内容: 中文描述 + 英文指令混合
+   - 大小: 通常几 KB 到几十 KB
+   - 来源: AI 模型自动生成 (主要是 qwen 和 kimi 模型)
+
+3. 生成模型:
+   - 主要模型: qwen (1,636), qwen-3.5 (1,630), qwen-3.7-plus (1,607)
+   - 其他模型: kimi (1,602), kimi-k2.5 (1,571), kimi-k2.6 (7), qwen3.6-plus (10)
+   - 每条记录记录了 model_id，可以追溯是哪个模型生成的
+
+4. 相关数据:
+   - image_annotation: 包含 prompt 的标注图片 (8,841 条)
+   - image_prescreen: 预筛选结果，无 prompt (14,814 条)
+   - 其他格式: jpeg, video, skip 等
+
+5. 关键表关系:
+   - saved_frames.id <-> prompt_usage.frame_id (外键关系)
+   - 删除 saved_frames 记录会级联删除对应的 prompt_usage 记录
+
+================================================================================
+8. 建议
+================================================================================
+
+1. 如果频繁查询 prompt，建议添加索引:
+   CREATE INDEX idx_saved_frames_prompt ON saved_frames (prompt) WHERE prompt IS NOT NULL;
+
+2. 数据安全:
+   - .env 文件包含敏感信息，确保不要提交到 Git
+   - 检查 .gitignore 中是否已忽略 .env
+   
+3. 备份:
+   pg_dump -h 127.0.0.1 -U video_frames -d video_frames > backup.sql
+
+4. 导出:
+   使用 COPY 命令导出为 CSV:
+   psql ... -c "COPY saved_frames TO STDOUT WITH CSV HEADER" > frames.csv
+
+================================================================================
+9. 文件路径速查
+================================================================================
+
+项目根目录:
+  /mnt/cypher/project/asset_manager/video-frame-extractor
+
+关键文件:
+  - .env: 数据库连接配置
+  - server/index.mjs: 服务器代码 (包含数据库初始化和查询)
+  - PostgreSQL_数据库调查报告.md: 完整报告
+  - QUICK_REFERENCE.md: 快速参考
+  - db_query_example.py: Python 示例脚本
+  - 数据库调查总结.txt: 本文件
+
+================================================================================
+10. 下一步建议
+================================================================================
+
+1. 根据需要使用提供的 Python 脚本连接数据库
+2. 参考 QUICK_REFERENCE.md 快速上手
+3. 查看 PostgreSQL_数据库调查报告.md 了解详细信息
+4. 根据业务需求编写自己的数据库查询代码
+5. 定期备份关键数据
+
+================================================================================
+调查完成时间: 2026-06-02 23:35 UTC+8
+================================================================================

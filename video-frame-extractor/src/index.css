@@ -1,0 +1,1140 @@
+:root {
+  --font: "Work Sans", sans-serif;
+  --background-dark: #151515;
+  --text-dark: #fafafa;
+  --card-dark: #313131;
+  --secondcard-dark: #515151;
+  --accent-dark: #3e5999;
+  --background-light: #fafafa;
+  --text-light: #151515;
+  --card-light: #e3e0e0;
+  --secondcard-light: #c0c0c0;
+  --accent-light: #718cc6;
+  --documentqueueborder: 0px;
+}
+
+body {
+  --background: var(--background-dark);
+  --text: var(--text-dark);
+  --card: var(--card-dark);
+  --secondcard: var(--secondcard-dark);
+  --accent: var(--accent-dark);
+  background-color: var(--background);
+  color: var(--text);
+  padding: 10px;
+  font-family: var(--font);
+}
+
+.card {
+  padding: 10px;
+  background-color: var(--card);
+  border-radius: 8px;
+}
+
+button,
+input,
+progress,
+.fullWidth {
+  width: 100%;
+  width: -webkit-fill-available;
+  width: -moz-available;
+}
+
+button,
+input,
+select,
+progress {
+  color: var(--text);
+  background-color: var(--accent);
+  font-family: var(--font);
+  border: 1px solid var(--text);
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+select {
+  width: 100%;
+}
+
+button:not([disabled=true]):not([disabled=""]):hover {
+  filter: brightness(130%);
+  cursor: pointer;
+}
+
+button:not([disabled=true]):not([disabled=""]):active {
+  filter: brightness(150%);
+}
+
+.flex {
+  display: flex;
+}
+
+.mainFlex {
+  flex-wrap: wrap;
+}
+
+.mainFlex>* {
+  flex: 1 0 400px;
+}
+
+.mainMiniFlex>* {
+  flex: 1 0 150px;
+}
+
+.gap {
+  gap: 10px;
+}
+
+video {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: 8px;
+  background-color: #1a1a2e;
+}
+
+.wcenter {
+  justify-content: center;
+}
+
+.miniButton button {
+  width: fit-content;
+}
+
+.miniGap {
+  gap: 5px;
+}
+
+.hcenter {
+  align-items: center;
+}
+
+.dialog {
+  width: 100vw;
+  height: 100vh;
+  top: 0;
+  left: 0;
+  position: fixed;
+  z-index: 3;
+  backdrop-filter: blur(8px) brightness(40%);
+  -webkit-backdrop-filter: blur(8px) brightness(40%);
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out
+}
+
+.dialog>div {
+  width: calc(70vw - 30px);
+  position: fixed;
+  top: 15vh;
+  height: calc(70vh - 30px);
+  left: 15vw;
+  padding: 15px;
+}
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 4px;
+}
+
+table>*>tr>* {
+  padding: 10px;
+  border-radius: 8px;
+}
+
+table>tbody>tr {
+  background-color: var(--secondcard);
+  border-radius: 8px;
+}
+
+table>thead>tr {
+  background-color: var(--accent);
+  border-radius: 8px;
+}
+
+td {
+  text-align: center;
+}
+
+a {
+  color: var(--text);
+}
+
+table img {
+  height: auto;
+  max-height: 30vh;
+  border-radius: 8px;
+  max-width: 30vw;
+}
+
+h2 {
+  text-align: center;
+}
+
+.opacity {
+  transition: opacity 0.2s ease-in-out;
+}
+
+input[type=checkbox] {
+  width: 60px;
+  min-width: 60px;
+  height: 20px;
+  appearance: none;
+  background-color: var(--card);
+  position: relative;
+  border-radius: 16px;
+  transition: 0.2s ease-in-out;
+}
+
+input[type=checkbox]::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  background-color: var(--text);
+  border-radius: 50%;
+  top: 3px;
+  left: 3px;
+  position: absolute;
+  transition: left 0.2s ease-in-out;
+}
+
+input[type=checkbox]:checked:before {
+  left: 41px;
+}
+
+input[type=checkbox]:checked {
+  background-color: var(--accent);
+}
+
+button {
+  border-radius: 16px;
+  transition: filter 0.2s ease-in-out;
+}
+
+button img,
+.buttonLike img {
+  user-select: none;
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+}
+
+.buttonLike {
+  transition: border 0.2s ease-in-out;
+}
+
+select {
+  background-position: calc(100% - 7px) center !important;
+  background-size: 20px 20px;
+  appearance: none;
+  border-radius: 16px;
+}
+
+select:hover,
+button:hover,
+.pointer:hover {
+  cursor: pointer;
+}
+
+.alert {
+  position: fixed;
+  top: 5vh;
+  left: 15vw;
+  height: auto;
+  padding: 10px;
+  border-radius: 16px;
+  border: 1px solid var(--text);
+  backdrop-filter: blur(8px) brightness(40%);
+  -webkit-backdrop-filter: blur(8px) brightness(40%);
+  width: 70vw;
+  z-index: 4;
+}
+
+.alert>img {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+}
+
+[disabled=true],
+[disabled=""] {
+  filter: brightness(40%);
+}
+
+progress {
+  height: 20px;
+  padding: 0px;
+  border-radius: 8px;
+  background-color: var(--card);
+}
+
+progress[value='1']::-webkit-progress-bar,
+progress[value='1']::-webkit-progress-value,
+progress[value='1']::-moz-progress-bar {
+  border-top-right-radius: 0px !important;
+  border-bottom-right-radius: 0px !important;
+}
+
+progress::-webkit-progress-bar {
+  border-radius: 12px;
+}
+
+progress::-webkit-progress-value {
+  border-radius: 8px;
+  z-index: -1;
+}
+
+progress::-moz-progress-bar {
+  border-radius: 8px;
+}
+
+progress::-moz-progress-bar {
+  background: var(--accent);
+}
+
+progress::-webkit-progress-value {
+  background: var(--accent);
+}
+
+.hideVideo {
+  z-index: -1;
+  opacity: 0.01;
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+}
+
+input[type=range] {
+  padding: 10px 0px;
+}
+
+/* ===========================================================================
+ * Cloud-save column + AI inspector panel
+ *
+ * The frame queue gets a fourth column showing the per-row save lifecycle.
+ * The styling intentionally diverges from the surrounding chrome — we want a
+ * "data inspector" feel that signals "this row is talking to a server / AI"
+ * without competing with the existing extraction UI.
+ * ======================================================================== */
+
+.frameThumbWrap {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+
+.frameThumbWrap .cloudBadge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4ade80, #16a34a);
+  color: #061a0c;
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--card);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(34, 197, 94, 0.35);
+}
+
+.frameRow--uploading>td,
+.frameRow--generating>td {
+  background: linear-gradient(90deg,
+      var(--secondcard) 0%,
+      color-mix(in srgb, var(--accent) 40%, var(--secondcard)) 50%,
+      var(--secondcard) 100%);
+  background-size: 200% 100%;
+  animation: cloudFlow 2.4s linear infinite;
+}
+
+.frameRow--saved>td {
+  background: color-mix(in srgb, #16a34a 14%, var(--secondcard));
+}
+
+.frameRow--error>td {
+  background: color-mix(in srgb, #dc2626 18%, var(--secondcard));
+}
+
+@keyframes cloudFlow {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.cloudCell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 150px;
+}
+
+.cloudBtn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--text) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 80%, transparent);
+  color: var(--text);
+  font-family: var(--font);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-size: 13px;
+  cursor: pointer;
+  transition: filter .15s ease-in-out, transform .15s ease-in-out, background-color .2s ease-in-out;
+}
+
+.cloudBtn:not([disabled]):hover {
+  filter: brightness(120%);
+  transform: translateY(-1px);
+}
+
+.cloudBtn[disabled] {
+  cursor: progress;
+  filter: none;
+}
+
+.cloudBtn__icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.cloudBtn__label {
+  white-space: nowrap;
+}
+
+.cloudBtn--saved {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  border-color: #4ade80;
+  color: #f0fdf4;
+}
+
+.cloudBtn--error {
+  background: linear-gradient(135deg, #dc2626, #991b1b);
+  border-color: #fca5a5;
+  color: #fff5f5;
+}
+
+.cloudBtn--uploading,
+.cloudBtn--generating {
+  background: color-mix(in srgb, var(--accent) 50%, var(--secondcard));
+  border-style: dashed;
+}
+
+.cloudSpinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--text) 30%, transparent);
+  border-top-color: var(--text);
+  animation: cloudSpin 0.7s linear infinite;
+}
+
+@keyframes cloudSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cloudLink {
+  width: 100%;
+  background: transparent;
+  border: 1px dashed color-mix(in srgb, var(--text) 35%, transparent);
+  color: var(--text);
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cloudLink:hover {
+  border-style: solid;
+  filter: brightness(115%);
+}
+
+.cloudErr {
+  font-size: 11px;
+  color: #fecaca;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  text-align: left;
+  word-break: break-all;
+  line-height: 1.3;
+}
+
+/* --------------------- AI inspector panel --------------------- */
+
+.aiPanelRow>td {
+  background: color-mix(in srgb, var(--accent) 12%, var(--background)) !important;
+  padding: 0 !important;
+  border-radius: 16px;
+}
+
+.aiPanel {
+  text-align: left;
+  padding: 18px 22px;
+  border-radius: 14px;
+  background:
+    radial-gradient(1200px 200px at 0% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%),
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 8%, var(--card)), var(--card));
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 8%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.aiPanel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.aiPanel__lead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.aiPanel__kicker {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--text);
+  color: var(--background);
+  font-weight: 700;
+}
+
+.aiPanel__style {
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--text) 35%, transparent);
+  border-radius: 999px;
+  color: var(--text);
+}
+
+.aiPanel__oss {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  text-decoration: none;
+  border-bottom: 1px dashed color-mix(in srgb, var(--text) 50%, transparent);
+  padding-bottom: 1px;
+}
+
+.aiPanel__oss:hover {
+  border-bottom-style: solid;
+}
+
+.aiField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.aiField__label {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text) 65%, transparent);
+  font-weight: 600;
+}
+
+.aiField__label--row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.aiField__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.aiField__body {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text);
+  max-width: 70ch;
+}
+
+.aiPose {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.aiPose__cn {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.aiPose__en {
+  font-size: 12px;
+  font-style: italic;
+  color: color-mix(in srgb, var(--text) 70%, transparent);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+.aiTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.aiTag {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 60%, transparent);
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--text) 20%, transparent);
+  letter-spacing: 0.02em;
+}
+
+.aiPrompt {
+  margin: 0;
+  padding: 12px 14px;
+  background: color-mix(in srgb, #000 35%, var(--background));
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-radius: 8px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--text) 92%, transparent);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: auto;
+}
+
+.aiGhostBtn {
+  width: auto;
+  padding: 4px 10px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--text) 35%, transparent);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.aiGhostBtn:hover {
+  border-color: var(--text);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.aiMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 11px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--text) 55%, transparent);
+  padding-top: 4px;
+  border-top: 1px dashed color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+/* ===========================================================================
+ * Skip button — paired with the amber AI Auto-Label CTA in MainVideoUI.
+ *
+ * Visual intent: a deliberately quieter, monochrome "reject" affordance that
+ * sits beside the warm amber primary action. The dashed underline and mono
+ * type echo the dossier aesthetic of VideoBrowser, so the duo reads as
+ * "primary review action" + "secondary discard action" without competing.
+ * ======================================================================== */
+
+.mu-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.mu-skip-btn {
+  width: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text) 78%, transparent);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--text) 32%, transparent);
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    color 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+
+.mu-skip-btn:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--text);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  transform: translateY(-1px);
+}
+
+.mu-skip-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.mu-skip-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ========================================================================
+ * AI Key Frames section in the View frames list dialog.
+ * Visually separates the AI-extracted (read-only, server-resident) rows
+ * from the manually-added (editable, local-blob) rows below them.
+ * ======================================================================== */
+
+.aiFramesSection {
+  margin-bottom: 18px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 14px;
+  background:
+    radial-gradient(900px 160px at 0% 0%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%),
+    color-mix(in srgb, var(--accent) 5%, var(--card));
+  padding: 12px 14px;
+  box-shadow: 0 6px 22px -14px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+
+.aiFramesHeader {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 4px 2px 12px 2px;
+  border-bottom: 1px dashed color-mix(in srgb, var(--text) 18%, transparent);
+  margin-bottom: 8px;
+}
+
+.aiFramesHeader--manual {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-bottom: none;
+  border-top: 1px dashed color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+.aiFramesHeader__badge {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  color: #f5f3ff;
+  box-shadow: 0 4px 14px -6px rgba(124, 58, 237, 0.6);
+}
+
+.aiFramesHeader__badge--manual {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #422006;
+  box-shadow: 0 4px 14px -6px rgba(245, 158, 11, 0.6);
+}
+
+.aiFramesHeader__title {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.aiFramesHeader__hint {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--text) 60%, transparent);
+  margin-left: auto;
+}
+
+.frameRow--ai>td {
+  background: color-mix(in srgb, var(--accent) 8%, var(--secondcard));
+}
+
+.previewImg--ai {
+  cursor: zoom-in;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 6px;
+}
+
+.cloudBadge--ai {
+  background: linear-gradient(135deg, #7c3aed, #2563eb) !important;
+  color: #f5f3ff !important;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(124, 58, 237, 0.45) !important;
+  font-size: 12px !important;
+}
+
+.aiFrameName {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  max-width: 320px;
+}
+
+.aiFrameName__chip {
+  flex-shrink: 0;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  color: #f5f3ff;
+}
+
+.aiFrameName__text {
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.aiTimestamp {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.04em;
+}
+
+/* ==========================================================================
+   AI analysis multi-step progress (rendered while a video is being analyzed)
+   ========================================================================== */
+.ai-analysis-progress {
+  margin: 12px 0;
+  padding: 16px;
+  background: var(--second-background, #1a1a2e);
+  border-radius: 8px;
+  border: 1px solid var(--border, #333);
+}
+
+.ai-progress-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-progress-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  opacity: 0.4;
+  transition: opacity 0.3s;
+}
+
+.ai-progress-step--active {
+  opacity: 1;
+  font-weight: 600;
+}
+
+.ai-progress-step--done {
+  opacity: 0.7;
+}
+
+.ai-progress-step--active .ai-progress-step-icon {
+  display: inline-block;
+  animation: spin 1.2s linear infinite;
+}
+
+.ai-progress-step--done .ai-progress-step-icon {
+  color: #4caf50;
+}
+
+.ai-progress-segment {
+  margin-top: 10px;
+  font-size: 12px;
+  opacity: 0.8;
+  padding-left: 28px;
+}
+
+.ai-progress-logs {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border, #333);
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 12px;
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular,
+    Menlo, Monaco, Consolas, monospace;
+}
+
+.ai-progress-log-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 0;
+  opacity: 0.85;
+  animation: ai-progress-log-fade-in 0.3s ease;
+}
+
+.ai-progress-log-dot {
+  color: var(--accent, #4caf50);
+  font-weight: bold;
+  flex: 0 0 auto;
+}
+
+.ai-progress-log-text {
+  word-break: break-word;
+}
+
+@keyframes ai-progress-log-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 0.85;
+    transform: translateY(0);
+  }
+}
+
+/* --- Tag Review --- */
+
+.pending-tags-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  margin: 8px 0;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.pending-tags-badge:hover {
+  opacity: 0.85;
+}
+
+.badge-count {
+  background: rgba(255, 255, 255, 0.25);
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+}
+
+.tag-review {
+  padding: 0 4px;
+}
+
+.tag-review-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.tag-review-header h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.tag-review-back {
+  background: var(--secondcard);
+  color: var(--text);
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.tag-review-back:hover {
+  opacity: 0.8;
+}
+
+.tag-review-global-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.tag-review-btn {
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #fff;
+}
+
+.tag-review-btn.select {
+  background: var(--secondcard);
+  color: var(--text);
+}
+
+.tag-review-btn.approve {
+  background: #4caf50;
+}
+
+.tag-review-btn.reject {
+  background: #e53935;
+}
+
+.tag-review-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tag-review-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  background: var(--card);
+  border-radius: 10px;
+}
+
+.tag-review-dimension {
+  background: var(--card);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+
+.tag-review-dim-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tag-review-dim-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.tag-review-dim-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.tag-review-btn-sm {
+  border: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: #fff;
+}
+
+.tag-review-btn-sm.select {
+  background: var(--secondcard);
+  color: var(--text);
+}
+
+.tag-review-btn-sm.approve {
+  background: #4caf50;
+}
+
+.tag-review-btn-sm.reject {
+  background: #e53935;
+}
+
+.tag-review-btn-sm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tag-review-tags {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tag-review-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.tag-review-tag-row:hover {
+  background: var(--secondcard);
+}
+
+.tag-review-tag-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.tag-review-tag-text {
+  font-weight: 500;
+  flex: 1;
+}
+
+.tag-review-tag-meta {
+  font-size: 0.8rem;
+  opacity: 0.6;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-review-tag-time {
+  font-size: 0.75rem;
+  opacity: 0.5;
+}

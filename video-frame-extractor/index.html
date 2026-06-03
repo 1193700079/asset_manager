@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <style id="customSelectColor">
+    select {
+      background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 16 16'><path fill='%23fafafa' d='M4.957 5a1 1 0 0 0-.821 1.571l2.633 3.784a1.5 1.5 0 0 0 2.462 0l2.633-3.784A1 1 0 0 0 11.043 5H4.957Z' /></svg>") no-repeat;
+    }
+  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" data-icon href="./icon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="manifest" href="./manifest.json">
+    <meta name="description"
+    content="Extract one or multiple video frames and save them as an image, directly from your browser.">
+  <title>Video Frame Extractor</title>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script>
+    const version = "1.0.4";
+    window.version = version;
+    (async () => {
+      const result = await navigator.serviceWorker.register('./service-worker.js',  {scope: location.href.substring(0, location.href.lastIndexOf("/") + 1)});
+      if (navigator.onLine) await result.update();
+    })();
+    fetch("./updatecode", { cache: "no-store" }).then((res) => res.text().then((text) => { if (text.replace("\n", "") !== version) if (confirm(`There's a new version of Video Frame Extractor. Do you want to update? [${version} --> ${text.replace("\n", "")}]`)) { caches.delete("videoframeextractor-cache"); location.reload(true); } }).catch((e) => { console.error(e) })).catch((e) => console.error(e)); // Check if the application code is the same as the current application version and, if not, ask the user to update
+
+    if (window.location.href.endsWith("?notheme")) localStorage.removeItem("VideoFrameExtractor-Theme");
+  </script>
+  <script type="module" src="/src/main.tsx"></script>
+
+</body>
+
+</html>

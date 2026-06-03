@@ -1,0 +1,285 @@
+/* ============================================================================
+ * VideoNav — control rail above the frame extractor
+ *   • Inherits VideoBrowser's amber + serif/mono palette
+ *   • Hairline rule on top + bottom, reading like a film-strip leader
+ *   • Three regions: dossier return · prev/index/next · current dossier slug
+ * ========================================================================== */
+
+.vn-rail {
+    --vn-amber: #d99454;
+    --vn-amber-soft: rgba(217, 148, 84, 0.14);
+    --vn-line: color-mix(in srgb, var(--text) 18%, transparent);
+    --vn-line-strong: color-mix(in srgb, var(--text) 32%, transparent);
+    --vn-mute: color-mix(in srgb, var(--text) 60%, transparent);
+    --vn-bg: color-mix(in srgb, var(--background) 88%, var(--text) 4%);
+
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr);
+    align-items: center;
+    gap: 18px;
+
+    margin: 0 0 18px;
+    padding: 14px 22px;
+    border-top: 1px solid var(--vn-line-strong);
+    border-bottom: 1px solid var(--vn-line-strong);
+    background:
+        linear-gradient(180deg,
+            color-mix(in srgb, var(--vn-amber) 4%, transparent),
+            transparent 65%),
+        repeating-linear-gradient(90deg,
+            transparent 0,
+            transparent 6px,
+            color-mix(in srgb, var(--text) 3%, transparent) 6px,
+            color-mix(in srgb, var(--text) 3%, transparent) 7px),
+        var(--vn-bg);
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    color: var(--text);
+    overflow: hidden;
+}
+
+.vn-rail::before,
+.vn-rail::after {
+    /* sprocket marks at far edges, echoing a film leader */
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--vn-amber);
+    transform: translateY(-50%);
+    opacity: 0.65;
+}
+
+.vn-rail::before {
+    left: 8px;
+}
+
+.vn-rail::after {
+    right: 8px;
+}
+
+/* ----- left: return to dossier --------------------------------------------- */
+.vn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px 8px 10px;
+    width: max-content;
+    background: transparent;
+    border: 1px solid var(--vn-line-strong);
+    border-radius: 0;
+    color: var(--text);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.vn-back:hover:not(:disabled) {
+    background: var(--vn-amber-soft);
+    border-color: var(--vn-amber);
+    color: var(--vn-amber);
+    filter: none;
+}
+
+.vn-back:active:not(:disabled) {
+    transform: translateY(1px);
+    filter: none;
+}
+
+.vn-back-arrow {
+    font-family: "Fraunces", serif;
+    font-style: italic;
+    font-size: 18px;
+    line-height: 1;
+    color: var(--vn-amber);
+    transition: transform 200ms ease;
+}
+
+.vn-back:hover .vn-back-arrow {
+    transform: translateX(-3px);
+}
+
+.vn-back-eyebrow {
+    display: block;
+    font-size: 9.5px;
+    letter-spacing: 0.28em;
+    color: var(--vn-mute);
+    margin-bottom: 1px;
+}
+
+.vn-back-label {
+    display: block;
+    font-size: 11.5px;
+    letter-spacing: 0.18em;
+}
+
+/* ----- center: prev | index | next ----------------------------------------- */
+.vn-center {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 4px;
+    justify-self: center;
+}
+
+.vn-arrow {
+    --b: 1px solid var(--vn-line-strong);
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: transparent;
+    border: var(--b);
+    border-radius: 0;
+    color: var(--text);
+    font-family: "Fraunces", "Times New Roman", serif;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.vn-arrow:hover:not(:disabled) {
+    background: var(--vn-amber);
+    border-color: var(--vn-amber);
+    color: var(--background);
+    filter: none;
+}
+
+.vn-arrow:active:not(:disabled) {
+    transform: translateY(1px);
+    filter: none;
+}
+
+.vn-arrow:disabled {
+    opacity: 0.32;
+    cursor: not-allowed;
+}
+
+.vn-index {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 6px 14px;
+    border-left: 1px solid var(--vn-line);
+    border-right: 1px solid var(--vn-line);
+    min-width: 120px;
+    justify-content: center;
+    user-select: none;
+}
+
+.vn-index-current {
+    font-family: "JetBrains Mono", monospace;
+    font-weight: 600;
+    font-size: 18px;
+    letter-spacing: 0.04em;
+    color: var(--vn-amber);
+    font-variant-numeric: tabular-nums;
+}
+
+.vn-index-sep {
+    font-family: "Fraunces", serif;
+    font-style: italic;
+    font-size: 18px;
+    color: var(--vn-mute);
+    transform: translateY(-1px);
+}
+
+.vn-index-total {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    color: var(--vn-mute);
+    font-variant-numeric: tabular-nums;
+}
+
+.vn-index-tag {
+    display: block;
+    width: 100%;
+    text-align: center;
+    margin-top: 2px;
+    font-size: 9.5px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--vn-mute);
+}
+
+/* ----- right: current slug ------------------------------------------------- */
+.vn-slug {
+    justify-self: end;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.vn-slug-eyebrow {
+    font-size: 9.5px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--vn-amber);
+    white-space: nowrap;
+}
+
+.vn-slug-eyebrow::before {
+    content: "";
+    display: inline-block;
+    width: 18px;
+    height: 1px;
+    background: var(--vn-amber);
+    vertical-align: middle;
+    margin-right: 8px;
+}
+
+.vn-slug-name {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 320px;
+    direction: rtl;
+    text-align: left;
+}
+
+/* responsive collapse */
+@media (max-width: 880px) {
+    .vn-rail {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 12px 18px;
+    }
+
+    .vn-rail::before,
+    .vn-rail::after {
+        display: none;
+    }
+
+    .vn-back,
+    .vn-center,
+    .vn-slug {
+        justify-self: stretch;
+    }
+
+    .vn-center {
+        justify-content: center;
+    }
+
+    .vn-slug {
+        justify-content: flex-start;
+    }
+
+    .vn-slug-name {
+        max-width: 100%;
+    }
+}
