@@ -19,8 +19,16 @@ export default function MediaGrid({ images, tag, characterName, characterId, onI
 
   const handleDelete = async (e: React.MouseEvent, url: string) => {
     e.stopPropagation();
-    if (!confirm('Move to trash?')) return;
-    await api.softDelete(characterName, url);
+    if (!confirm('Move to trash? (recoverable)')) return;
+    await api.softDelete(characterName, url, false);
+    onRefresh();
+  };
+
+  const handleHardDelete = async (e: React.MouseEvent, url: string) => {
+    e.stopPropagation();
+    if (!confirm('⚠️ PERMANENTLY DELETE this image AND its OSS file?\nThis cannot be undone.')) return;
+    const r = await api.softDelete(characterName, url, true);
+    if (r.status !== 'ok') alert(`Failed: ${r.mode || 'unknown error'}`);
     onRefresh();
   };
 
@@ -58,7 +66,8 @@ export default function MediaGrid({ images, tag, characterName, characterId, onI
             >
               {STATUS_ICONS[status] || '⚪'}
             </button>
-            <button className="card-del" onClick={e => handleDelete(e, img)}>✕</button>
+            <button className="card-del" onClick={e => handleDelete(e, img)} title="Move to trash (recoverable)">✕</button>
+            <button className="card-hard-del" onClick={e => handleHardDelete(e, img)} title="Permanent delete (DB + OSS)">🗑</button>
             <button
               className="card-avatar-btn"
               onClick={e => handleSetAvatar(e, img)}

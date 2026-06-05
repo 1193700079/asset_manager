@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./ImageBrowser.css";
+import CreateAlert from "../Scripts/CreateAlert";
 
 export interface RemoteImage {
     path: string;
@@ -39,6 +40,8 @@ interface AnnotationData {
     tags: string[];
     model_id: string | null;
     created_at: string;
+    video_prompt: string | null;
+    video_prompt_model: string | null;
 }
 
 interface Props {
@@ -59,6 +62,11 @@ function fmtBytes(n: number): string {
     while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
     const digits = v >= 100 ? 0 : v >= 10 ? 1 : 2;
     return `${v.toFixed(digits)} ${units[i]}`;
+}
+
+function fmtNum(n: number): string {
+    if (!Number.isFinite(n) || n < 0) return "—";
+    return n.toLocaleString("en-US");
 }
 
 function formatBatchTime(iso: string | null | undefined): string {
@@ -367,6 +375,40 @@ export default function ImageBrowser({ onPick, annotationsVersion = 0, initialIm
         [rawItems, annotatedPaths]
     );
 
+    // Per-category annotated counts (intersect annotatedPaths with prescreen category)
+    const annotatedFaceCount = useMemo(
+        () => rawItems.filter(v => {
+            if (!annotatedPaths.has(v.path)) return false;
+            const ps = prescreenedPaths.get(v.path);
+            return ps?.category === 'face_nsfw';
+        }).length,
+        [rawItems, annotatedPaths, prescreenedPaths]
+    );
+    const annotatedWatermarkCount = useMemo(
+        () => rawItems.filter(v => {
+            if (!annotatedPaths.has(v.path)) return false;
+            const ps = prescreenedPaths.get(v.path);
+            return ps?.category === 'watermark';
+        }).length,
+        [rawItems, annotatedPaths, prescreenedPaths]
+    );
+    const annotatedTrainCount = useMemo(
+        () => rawItems.filter(v => {
+            if (!annotatedPaths.has(v.path)) return false;
+            const ps = prescreenedPaths.get(v.path);
+            // Annotated images without prescreen record, or prescreened as non-face/non-watermark, count as training
+            if (!ps) return true;
+            return ps.category !== 'face_nsfw' && ps.category !== 'watermark';
+        }).length,
+        [rawItems, annotatedPaths, prescreenedPaths]
+    );
+
+    // Category totals (annotated + pending) — "已标注 + 待标注" 守恒
+    const trainTotal = annotatedTrainCount + trainCount;
+    const faceTotal = annotatedFaceCount + faceCount;
+    const watermarkTotal = annotatedWatermarkCount + watermarkCount;
+    const grandAnnotated = annotatedTrainCount + annotatedFaceCount + annotatedWatermarkCount;
+
     // Handle image click - show annotation detail
     const handleImageClick = useCallback(async (img: RemoteImage) => {
         setSelectedImage(img);
@@ -476,6 +518,7 @@ export default function ImageBrowser({ onPick, annotationsVersion = 0, initialIm
             });
             const json = await res.json();
             if (json.success) {
+                CreateAlert(`已跳过 ${paths.length} 张图片`);
                 setSkippedPaths(prev => {
                     const n = new Set(prev);
                     paths.forEach(p => n.add(p));
@@ -495,7 +538,7 @@ export default function ImageBrowser({ onPick, annotationsVersion = 0, initialIm
                 lastClickedRef.current = null;
                 onPrescreenChange?.();
             }
-        } catch { /* ignore */ }
+        } catch { CreateAlert("批量跳过失败，请重试"); }
     }, [selectedSet, onPrescreenChange]);
 
     // Batch move selected images to a category
@@ -562,12 +605,13 @@ export default function ImageBrowser({ onPick, annotationsVersion = 0, initialIm
             });
             const json = await res.json();
             if (json.success) {
+                CreateAlert(`已跳过 ${img.name}`);
                 setSkippedPaths(prev => new Set([...prev, img.path]));
                 setAnnotatedPaths(prev => { const n = new Set(prev); n.delete(img.path); return n; });
                 setSkipReasons(prev => ({ ...prev, [img.path]: 'Manual skip' }));
                 setAnnotation(null);
             }
-        } catch { /* ignore */ }
+        } catch { CreateAlert("跳过失败，请重试"); }
     }, []);
 
     // Unskip
@@ -580,10 +624,11 @@ export default function ImageBrowser({ onPick, annotationsVersion = 0, initialIm
             });
             const json = await res.json();
             if (json.success) {
+                CreateAlert(`已恢复 ${img.name}`);
                 setSkippedPaths(prev => { const n = new Set(prev); n.delete(img.path); return n; });
                 setSkipReasons(prev => { const n = { ...prev }; delete n[img.path]; return n; });
             }
-        } catch { /* ignore */ }
+        } catch { CreateAlert("恢复失败，请重试"); }
     }, []);
 
     const handleLinkCharacter = useCallback(async () => {
@@ -741,43 +786,75 @@ export default function ImageBrowser({ onPick, annotationsVersion = 0, initialIm
                 </div>
             </header>
 
+            <div className="ib-stat-strip" role="group" aria-label="分类统计摘要">
+                <div className="ib-stat-strip-label">分类统计</div>
+                <div className="ib-stat-segments">
+                    <div className="ib-stat-seg ib-stat-seg--face">
+                        <span className="ib-stat-seg-icon" aria-hidden="true">🎭</span>
+                        <span className="ib-stat-seg-name">换脸素材</span>
+                        <span className="ib-stat-seg-num">{fmtNum(annotatedFaceCount)}</span>
+                        <span className="ib-stat-seg-suffix">已标注 / 总 {fmtNum(faceTotal)}</span>
+                    </div>
+                    <div className="ib-stat-seg ib-stat-seg--train">
+                        <span className="ib-stat-seg-icon" aria-hidden="true">🔥</span>
+                        <span className="ib-stat-seg-name">训练素材</span>
+                        <span className="ib-stat-seg-num">{fmtNum(annotatedTrainCount)}</span>
+                        <span className="ib-stat-seg-suffix">已标注 / 总 {fmtNum(trainTotal)}</span>
+                    </div>
+                    <div className="ib-stat-seg ib-stat-seg--watermark">
+                        <span className="ib-stat-seg-icon" aria-hidden="true">💧</span>
+                        <span className="ib-stat-seg-name">待去水印</span>
+                        <span className="ib-stat-seg-num">{fmtNum(annotatedWatermarkCount)}</span>
+                        <span className="ib-stat-seg-suffix">已标注 / 总 {fmtNum(watermarkTotal)}</span>
+                    </div>
+                </div>
+                <div className="ib-stat-grand">
+                    <span className="ib-stat-grand-label">总计已标注</span>
+                    <span className="ib-stat-grand-num">{fmtNum(grandAnnotated)}</span>
+                </div>
+            </div>
+
             <div className="ib-toolbar">
                 <div className="ib-tab-bar">
                     <button
                         className={tab === "unannotated" ? "active" : ""}
                         onClick={() => setTab("unannotated")}
+                        title="尚未进入预筛选流程的原始图片"
                     >
-                        未标注 ({unannotatedCount})
+                        未标注 ({fmtNum(unannotatedCount)})
                     </button>
                     <button
                         className={tab === "train" ? "active" : ""}
                         onClick={() => setTab("train")}
+                        title={`训练素材 · 已标注 ${fmtNum(annotatedTrainCount)} / 总 ${fmtNum(trainTotal)}`}
                     >
-                        🔥 训练素材 ({trainCount})
+                        🔥 训练素材 (待标注 {fmtNum(trainCount)} / 总 {fmtNum(trainTotal)})
                     </button>
                     <button
                         className={tab === "face" ? "active" : ""}
                         onClick={() => setTab("face")}
+                        title={`换脸素材 · 已标注 ${fmtNum(annotatedFaceCount)} / 总 ${fmtNum(faceTotal)}`}
                     >
-                        🎭 换脸素材 ({faceCount})
+                        🎭 换脸素材 (待标注 {fmtNum(faceCount)} / 总 {fmtNum(faceTotal)})
                     </button>
                     <button
                         className={tab === "rejected" ? "active" : ""}
                         onClick={() => setTab("rejected")}
                     >
-                        已拒绝 ({rejectedCount})
+                        已拒绝 ({fmtNum(rejectedCount)})
                     </button>
                     <button
                         className={tab === "watermark" ? "active" : ""}
                         onClick={() => setTab("watermark")}
+                        title={`待去水印 · 已标注 ${fmtNum(annotatedWatermarkCount)} / 总 ${fmtNum(watermarkTotal)}`}
                     >
-                        💧 待去水印 ({watermarkCount})
+                        💧 待去水印 (待标注 {fmtNum(watermarkCount)} / 总 {fmtNum(watermarkTotal)})
                     </button>
                     <button
                         className={tab === "annotated" ? "active" : ""}
                         onClick={() => setTab("annotated")}
                     >
-                        已标注 ({annotatedCount})
+                        已标注 ({fmtNum(annotatedCount)})
                     </button>
 
                 </div>
@@ -1218,6 +1295,29 @@ export default function ImageBrowser({ onPick, annotationsVersion = 0, initialIm
                                     ))}
                                 </div>
                             </div>
+                            {annotation.video_prompt && (
+                                <div className="ib-detail-section">
+                                    <h4>🎬 图生视频提示词</h4>
+                                    <p className="ib-detail-text" style={{ 
+                                        whiteSpace: 'pre-wrap', 
+                                        color: '#4ade80',
+                                        fontSize: '13px',
+                                        lineHeight: '1.5',
+                                        maxHeight: '200px',
+                                        overflowY: 'auto',
+                                        background: 'rgba(0,0,0,0.3)',
+                                        padding: '8px 12px',
+                                        borderRadius: '6px'
+                                    }}>
+                                        {annotation.video_prompt}
+                                    </p>
+                                    {annotation.video_prompt_model && (
+                                        <div style={{ fontSize: '11px', color: '#888', marginTop: '4px' }}>
+                                            模型: {annotation.video_prompt_model}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                             <div className="ib-detail-footer">
                                 <span>模型: {annotation.model_id || 'unknown'}</span>
                                 <span>时间: {annotation.created_at ? new Date(annotation.created_at).toLocaleString() : '—'}</span>

@@ -16,13 +16,14 @@ interface Props {
   onSearchChange: (q: string) => void;
   onRefresh: () => void;
   onOpenLibrary: () => void;
+  onOpenGlobalBatch: () => void;
 }
 
 export default function Sidebar({
   names, index, categories, activeName, activeCat,
   searchQuery, dataSource, sources, onDataSourceChange,
   onSelect, onCategoryChange, onSearchChange,
-  onRefresh, onOpenLibrary,
+  onRefresh, onOpenLibrary, onOpenGlobalBatch,
 }: Props) {
   return (
     <div className="sidebar">
@@ -65,6 +66,7 @@ export default function Sidebar({
       <div className="sidebar-toolbar">
         <button onClick={onRefresh}>Refresh</button>
         <button className="lib-btn" onClick={onOpenLibrary}>素材库</button>
+        <button className="batch-btn" onClick={onOpenGlobalBatch}>批处理</button>
       </div>
       <div className="char-list">
         {names.map(n => {

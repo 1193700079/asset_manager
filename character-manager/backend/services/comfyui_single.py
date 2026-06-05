@@ -23,11 +23,17 @@ import requests
 # ── Workflow paths ────────────────────────────────
 WORKFLOW_SWAP = "/mnt/user/joseph/data/ScrapedData/换脸生视频工作流.json"
 WORKFLOW_ZIMAGE = "/mnt/user/joseph/data/ScrapedData/Z-Image+Base+&+Turbo+双重采样工作流-cypher (2).json"
-WORKFLOW_EDIT = "/mnt/user/joseph/data/ScrapedData/Joseph-qwen-image-edit (1).json"
+WORKFLOW_EDIT = "/mnt/user/joseph/data/ScrapedData/Joseph-qwen-image-edit (3).json"
 WORKFLOW_VIDEO = "/mnt/cypher/project/asset_manager/Vantage-Sulphur-2-Workflow.json"
 
 # ── ComfyUI ports ─────────────────────────────────
-COMFYUI_PORTS = [8188, 8189, 8190, 8191, 8192, 8193, 8194, 8195]
+# 16-proc layout: 8 GPUs × 2 slots each
+#   slot 0: 8188-8195
+#   slot 1: 8288-8295
+COMFYUI_PORTS = [
+    8188, 8189, 8190, 8191, 8192, 8193, 8194, 8195,
+    8288, 8289, 8290, 8291, 8292, 8293, 8294, 8295,
+]
 COMFYUI_HOST = "localhost"
 
 # ── Node IDs per workflow ─────────────────────────
@@ -92,6 +98,11 @@ def _load_workflow(wf_type: str) -> dict:
         return copy.deepcopy(_workflow_cache[wf_type])
 
 
+def _round_to(x: float, step: int) -> int:
+    """Round float x to the nearest multiple of step."""
+    return int(round(x / step) * step)
+
+
 def _find_free_port() -> Optional[int]:
     """Find a ComfyUI port with smallest queue."""
     best_port, best_size = None, float("inf")
@@ -134,17 +145,34 @@ def _upload_image(port: int, image_url: str, filename: str) -> str:
 
 def _submit_and_poll(port: int, workflow: dict, task_type: str, timeout: int = 600) -> dict:
     """Submit workflow and poll until done. Returns {result_url, error, ...}."""
+    import time as _time
+    
     client_id = str(uuid.uuid4())
+    
+    _t0 = _time.time()
     resp = requests.post(
         f"http://{COMFYUI_HOST}:{port}/prompt",
         json={"prompt": workflow, "client_id": client_id},
         timeout=30,
     )
-    resp.raise_for_status()
+    _t_submit = _time.time() - _t0
+    
+    if resp.status_code != 200:
+        # Capture ComfyUI error details
+        try:
+            error_data = resp.json()
+            error_msg = error_data.get("error", {}).get("message", "") or str(error_data)
+        except:
+            error_msg = resp.text[:500]
+        return {"status": "failed", "error": f"ComfyUI {resp.status_code}: {error_msg}"}
+    
     prompt_id = resp.json()["prompt_id"]
+    print(f"[comfyui] submit took {_t_submit:.2f}s, prompt_id={prompt_id[:8]}")
 
     start = time.time()
+    poll_count = 0
     while time.time() - start < timeout:
+        poll_count += 1
         try:
             h = requests.get(f"http://{COMFYUI_HOST}:{port}/history/{prompt_id}", timeout=15)
             if h.status_code == 200:
@@ -152,6 +180,8 @@ def _submit_and_poll(port: int, workflow: dict, task_type: str, timeout: int = 6
                 if history:
                     status = history.get("status", {})
                     if status.get("completed"):
+                        _t_total = _time.time() - start
+                        print(f"[comfyui] completed in {_t_total:.1f}s after {poll_count} polls")
                         # Extract output files
                         files = []
                         for node_id, node_out in history.get("outputs", {}).items():
@@ -257,16 +287,26 @@ def submit_single(task_type: str, image_url: str = "", face_url: str = "",
 
 def _run_single(job_id: str, task_type: str, image_url: str, face_url: str, prompt: str, seed: int):
     """Background worker for single task processing."""
+    import time as _time
+    _t_start = _time.time()
+    
     try:
         # 1. Find free port
+        _t0 = _time.time()
         port = _find_free_port()
+        _t_find_port = _time.time() - _t0
+        print(f"[comfyui] find_free_port took {_t_find_port:.2f}s")
+        
         if port is None:
             _update_job(job_id, status="failed", error="No available ComfyUI instance")
             return
         _update_job(job_id, port=port)
 
         # 2. Load workflow
+        _t0 = _time.time()
         wf = _load_workflow(task_type)
+        _t_load_wf = _time.time() - _t0
+        print(f"[comfyui] load_workflow took {_t_load_wf:.2f}s")
 
         # 3. Upload images & inject params
         if task_type == "comfy_swap":
@@ -287,15 +327,119 @@ def _run_single(job_id: str, task_type: str, image_url: str, face_url: str, prom
             wf[ZIMG_NODE_NEG]["inputs"]["text"] = "blurry, ugly, bad anatomy, deformed, low quality"
             wf[ZIMG_NODE_SEED]["inputs"]["seed"] = seed
             wf[ZIMG_NODE_FILE]["inputs"]["filename_prefix"] = f"single/zimg_{job_id}"
+            
+            # Set resolution to 720p (720x1280 for portrait)
+            if "10" in wf and wf["10"].get("class_type") == "EmptyLatentImage":
+                wf["10"]["inputs"]["width"] = 720
+                wf["10"]["inputs"]["height"] = 1280
 
         elif task_type == "comfy_edit":
             if not image_url or not prompt:
                 _update_job(job_id, status="failed", error="Edit needs image_url and prompt")
                 return
+
+            _t0 = time.time()
             img_name = _upload_image(port, image_url, "edit_input.png")
+            _t_upload = time.time() - _t0
+            print(f"[comfyui-edit] image upload took {_t_upload:.2f}s")
+
+            # Compute target_size to match source image pixel area (~ preserve resolution 1:1).
+            # The QwenEdit node scales to total_pixels = target_size²; aspect ratio follows source.
+            import math as _math
+            try:
+                if image_url.startswith(("http://", "https://")):
+                    _hreq = requests.head(image_url, timeout=10, allow_redirects=True)
+                    _ctype = _hreq.headers.get("Content-Type", "")
+                    if "svg" not in _ctype and "json" not in _ctype:
+                        from PIL import Image as _PILImage
+                        import io as _io
+                        _body = requests.get(image_url, timeout=30).content
+                        with _PILImage.open(_io.BytesIO(_body)) as _img_tmp:
+                            _src_w, _src_h = _img_tmp.size
+                    else:
+                        _src_w, _src_h = 1024, 1024
+                elif Path(image_url).exists():
+                    from PIL import Image as _PILImage
+                    with _PILImage.open(image_url) as _img_tmp:
+                        _src_w, _src_h = _img_tmp.size
+                else:
+                    _src_w, _src_h = 1024, 1024
+                _raw_ts = _math.sqrt(_src_w * _src_h)
+                _target_size = int(max(512, min(2048, _round_to(_raw_ts, 8))))
+                print(f"[comfyui-edit] source={_src_w}x{_src_h} -> target_size={_target_size}")
+            except Exception as _e:
+                print(f"[comfyui-edit] resolution probe failed ({_e}), defaulting to 1024")
+                _target_size = 1024
+
             wf[EDIT_NODE_IMAGE]["inputs"]["image"] = img_name
+            
+            # Node 17: TextEncodeQwenImageEditPlusAdvance
             wf[EDIT_NODE_PROMPT]["inputs"]["prompt"] = prompt
+            wf[EDIT_NODE_PROMPT]["inputs"]["instruction"] = (
+                "Describe the key features of the input image (color, shape, size, texture, objects, background), "
+                "then explain how the user's text instruction should alter or modify the image. "
+                "Generate a new image that meets the user's requirements while maintaining consistency "
+                "with the original input where appropriate. "
+                "Keep the subject's facial features, face shape, bone structure, and identity identical to the input image. "
+                "Avoid: overly smooth skin, plastic skin, waxy skin, shiny plastic, artificial lighting, "
+                "harsh shadows, cartoon, 3d render, anime, painting, illustration, blurry, "
+                "low quality, deformed, extra limbs, bad anatomy."
+            )
+            # Allowed target_size values for TextEncodeQwenImageEditPlusAdvance:
+            # [1024, 1344, 1536, 2048, 768, 512]. Use 1024 as a safe default.
+            wf[EDIT_NODE_PROMPT]["inputs"]["target_size"] = _target_size
+            # Explicit connections from CheckpointLoaderSimple (node 15)
+            wf[EDIT_NODE_PROMPT]["inputs"]["clip"] = ["15", 1]
+            wf[EDIT_NODE_PROMPT]["inputs"]["vae"] = ["15", 2]
+            
+            # Node 13: KSampler - explicit model connection
+            wf["13"]["inputs"]["model"] = ["15", 0]
+            
+            # Node 11: VAEDecode - explicit vae connection
+            wf["11"]["inputs"]["vae"] = ["15", 2]
+
+            # Post-process: resize the square QwenEdit output back to source resolution.
+            # The QwenImageEdit node always produces square output (target_size × target_size)
+            # due to how its reference latent is VAE-encoded. We insert a built-in ImageScale
+            # between VAEDecode (node 11) and SaveImage (node 10) so the final image
+            # matches the source image's native width × height.
+            if _src_w and _src_h and (_src_w != _src_h):
+                wf["99"] = {
+                    "inputs": {
+                        "image": ["11", 0],
+                        "upscale_method": "lanczos",
+                        "width": _src_w,
+                        "height": _src_h,
+                        "crop": "disabled",
+                    },
+                    "class_type": "ImageScale",
+                    "_meta": {"title": "ImageScale back to source"},
+                }
+                wf["10"]["inputs"]["images"] = ["99", 0]
+                print(f"[comfyui-edit] will resize square output → {_src_w}x{_src_h}")
+            
+            # Disable Anything Everywhere (node 7) to avoid injection conflicts
+            if "7" in wf:
+                wf["7"]["inputs"] = {}
+            
+            # Node 14: Replace custom LayerUtility with built-in ImageScale
+            # Original node 14 scaled to 512 with aspect ratio, we'll use built-in ImageScale
+            wf["14"] = {
+                "inputs": {
+                    "image": ["18", 0],
+                    "upscale_method": "lanczos",
+                    "width": 512,
+                    "height": 512,
+                    "crop": "disabled"
+                },
+                "class_type": "ImageScale",
+                "_meta": {"title": "ImageScale"}
+            }
+            
+            # Node 16: Seed
             wf[EDIT_NODE_SEED]["inputs"]["seed"] = seed
+            
+            # Node 10: SaveImage
             wf[EDIT_NODE_FILE]["inputs"]["filename_prefix"] = f"single/edit_{job_id}"
 
         elif task_type == "comfy_video":
@@ -317,6 +461,7 @@ def _run_single(job_id: str, task_type: str, image_url: str, face_url: str, prom
             return
 
         # 5. Download result
+        _t0 = time.time()
         files = result.get("files", [])
         if not files:
             _update_job(job_id, status="failed", error="No output files",
@@ -324,6 +469,8 @@ def _run_single(job_id: str, task_type: str, image_url: str, face_url: str, prom
             return
 
         local_path = _download_result(port, files[0], job_id)
+        _t_download = time.time() - _t0
+        print(f"[comfyui] result download took {_t_download:.2f}s")
 
         # 6. Build result URL (serve via FastAPI static files or VFE)
         result_url = f"/api/comfyui/result/{job_id}/{files[0]['filename']}"
@@ -331,6 +478,9 @@ def _run_single(job_id: str, task_type: str, image_url: str, face_url: str, prom
         _update_job(job_id, status="completed",
                     result_url=result_url, result_path=local_path,
                     prompt_id=result.get("prompt_id"))
+        
+        _t_total = _time.time() - _t_start
+        print(f"[comfyui] total workflow took {_t_total:.1f}s for {task_type}")
 
     except Exception as e:
         _update_job(job_id, status="failed", error=str(e)[:500])
@@ -371,10 +521,23 @@ def get_result_file(job_id: str, filename: str) -> Optional[str]:
     return None
 
 
+def discard_job(job_id: str) -> dict:
+    """Mark a ComfyUI job as discarded."""
+    with _lock:
+        if job_id not in _jobs:
+            return {"status": "error", "message": "Job not found"}
+        _jobs[job_id]["status"] = "discarded"
+        _jobs[job_id]["completed_at"] = datetime.now().isoformat()
+    return {"status": "ok", "job_id": job_id}
+
+
 def save_result_to_character(job_id: str, character_name: str, media_type: str = "image") -> dict:
     """Save a completed ComfyUI job's result into the character's media JSON array."""
     import json as _json
     import psycopg2.extras
+    import oss2
+    from pathlib import Path
+    from config import settings
 
     # This import is deferred to avoid circular imports at module level
     from database import get_conn, put_conn
@@ -394,6 +557,27 @@ def save_result_to_character(job_id: str, character_name: str, media_type: str =
 
     if task_type in ("comfy_video",):
         media_type = "video"
+
+    # Upload to OSS first
+    result_path = job.get("result_path")
+    if result_path and Path(result_path).exists():
+        try:
+            auth = oss2.Auth(settings.oss_access_key_id, settings.oss_access_key_secret)
+            bucket = oss2.Bucket(auth, settings.oss_endpoint, settings.oss_bucket)
+            
+            filename = Path(result_path).name
+            oss_key = f"{settings.oss_prefix}{job_id}/{filename}"
+            
+            bucket.put_object_from_file(oss_key, result_path)
+            
+            # Build OSS URL
+            endpoint = settings.oss_endpoint.replace("https://", "").replace("http://", "")
+            oss_url = f"https://{settings.oss_bucket}.{endpoint}/{oss_key}"
+            
+            print(f"[comfyui] uploaded to OSS: {oss_url}")
+            result_url = oss_url
+        except Exception as e:
+            print(f"[comfyui] OSS upload failed: {e}, using local URL")
 
     conn = get_conn()
     try:
@@ -441,3 +625,61 @@ def save_result_to_character(job_id: str, character_name: str, media_type: str =
         return {"status": "error", "message": str(e)[:500]}
     finally:
         put_conn(conn)
+
+
+def _upload_to_oss(local_path: str, job_id: str) -> str | None:
+    """Upload a local result file to OSS and return its public URL, or None."""
+    try:
+        import oss2
+        from pathlib import Path as _Path
+        from config import settings
+        auth = oss2.Auth(settings.oss_access_key_id, settings.oss_access_key_secret)
+        bucket = oss2.Bucket(auth, settings.oss_endpoint, settings.oss_bucket)
+        filename = _Path(local_path).name
+        oss_key = f"{settings.oss_prefix}{job_id}/{filename}"
+        bucket.put_object_from_file(oss_key, local_path)
+        endpoint = settings.oss_endpoint.replace("https://", "").replace("http://", "")
+        return f"https://{settings.oss_bucket}.{endpoint}/{oss_key}"
+    except Exception as e:
+        print(f"[comfyui] OSS upload failed: {e}")
+        return None
+
+
+def run_oneshot(task_type: str, image_url: str = "", face_url: str = "",
+                prompt: str = "", seed: int = 0) -> dict:
+    """Synchronously run ONE ComfyUI task across the 16-port pool and return a
+    public OSS URL. Blocking — call from a thread executor for concurrency.
+
+    task_type: comfy_swap | comfy_zimage | comfy_edit | comfy_video
+    Returns {ok: True, url, local_path} or {ok: False, error}.
+    """
+    if task_type not in WORKFLOW_LABELS:
+        return {"ok": False, "error": f"Unknown comfy task type: {task_type}"}
+    if seed == 0:
+        seed = random.randint(0, 2**31 - 1)
+
+    job_id = _next_job_id()
+    with _lock:
+        _jobs[job_id] = {
+            "job_id": job_id, "task_type": task_type, "label": WORKFLOW_LABELS[task_type],
+            "character_name": "", "image_url": image_url, "face_url": face_url,
+            "prompt": prompt, "seed": seed, "status": "running",
+            "result_url": None, "result_path": None, "error": None,
+            "port": None, "prompt_id": None,
+            "created_at": datetime.now().isoformat(), "completed_at": None,
+        }
+
+    # Reuse the existing per-task worker synchronously.
+    _run_single(job_id, task_type, image_url, face_url, prompt, seed)
+
+    with _lock:
+        job = dict(_jobs.get(job_id) or {})
+
+    if job.get("status") != "completed" or not job.get("result_path"):
+        return {"ok": False, "error": job.get("error") or "comfy task failed"}
+
+    public_url = _upload_to_oss(job["result_path"], job_id)
+    if not public_url:
+        # Fall back to local serve URL (works within the same host).
+        public_url = job.get("result_url")
+    return {"ok": True, "url": public_url, "local_path": job.get("result_path")}

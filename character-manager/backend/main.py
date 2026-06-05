@@ -9,6 +9,7 @@ from config import settings
 from database import init_pool, close_pool, get_conn, put_conn, set_data_source
 from routers import characters_router, media_router, reference_router, asset_library_router, generation_router, scripts_router, comfyui_single_router, avatar_router
 from services import vfe_client, smartstudio_client, script_runner
+from services.supabase_storage import ensure_bucket_exists
 
 
 def _parse_json(val):
@@ -25,6 +26,7 @@ def _parse_json(val):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_pool()
+    await ensure_bucket_exists()
 
     # Kill all running batch script jobs on shutdown
     def _cleanup():
@@ -126,15 +128,33 @@ async def get_index():
             active = [m for m in media_list if isinstance(m, dict) and not m.get("is_deleted")]
             trashed = [m for m in media_list if isinstance(m, dict) and m.get("is_deleted")]
 
-            profile_images = [m["url"] for m in active if m.get("type") == "image" and m.get("url")]
-            profile_videos = [m["url"] for m in active if m.get("type") == "video" and m.get("url")]
-            swapface_images = [m["url"] for m in active if m.get("type") == "swapface_image" and m.get("url")]
+            def _is_pending(m):
+                return m.get("media_status") == "pending"
+
+            # Published (non-pending) media shows in the profile/generated sections.
+            # Items without a media_status (legacy) count as published.
+            published = [m for m in active if not _is_pending(m)]
+
+            profile_images = [m["url"] for m in published if m.get("type") == "image" and m.get("url")]
+            profile_videos = [m["url"] for m in published if m.get("type") == "video" and m.get("url")]
+            swapface_images = [m["url"] for m in published if m.get("type") == "swapface_image" and m.get("url")]
 
             # Per-media status maps
             media_status_map: dict[str, str] = {}
             for m in active:
                 if isinstance(m, dict) and m.get("url"):
                     media_status_map[m["url"]] = m.get("media_status", "pending")
+
+            # Pending (待选) media for the review section — only explicit 'pending'.
+            pending_media = [
+                {
+                    "url": m["url"],
+                    "type": m.get("type", "image"),
+                    "source": m.get("source", ""),
+                }
+                for m in active
+                if isinstance(m, dict) and m.get("url") and _is_pending(m)
+            ]
 
             trash_images = [m["url"] for m in trashed if m.get("type") == "image" and m.get("url")]
             trash_videos = [m["url"] for m in trashed if m.get("type") == "video" and m.get("url")]
@@ -161,6 +181,7 @@ async def get_index():
                 "trash_generated": trash_generated,
                 "trash_all": trash_images + trash_videos + trash_generated,
                 "media_status_map": media_status_map,
+                "pending_media": pending_media,
             }
         return index
     finally:

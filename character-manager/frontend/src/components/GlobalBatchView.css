@@ -1,0 +1,139 @@
+.global-batch-view {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.gb-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #0f3460;
+}
+
+.gb-back-btn {
+  background: #0f3460;
+  color: #4fc3f7;
+  border: 1px solid #4fc3f7;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+
+.gb-back-btn:hover {
+  background: #4fc3f7;
+  color: #000;
+}
+
+.gb-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #eee;
+}
+
+.gb-loading,
+.gb-empty {
+  text-align: center;
+  padding: 40px;
+  color: #888;
+  font-size: 14px;
+}
+
+.gb-char-select {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  background: #16213e;
+  border-radius: 8px;
+  border: 1px solid #0f3460;
+}
+
+.gb-char-select label {
+  font-size: 13px;
+  color: #aaa;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.gb-char-select select {
+  flex: 1;
+  max-width: 300px;
+  padding: 6px 10px;
+  background: #0f3460;
+  color: #eee;
+  border: 1px solid #1a3a6e;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.gb-char-select select:focus {
+  border-color: #4fc3f7;
+  outline: none;
+}
+
+.gb-content {
+  background: #1a1a2e;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid #0f3460;
+}
+
+/* Anime batch generation */
+.gb-anime-batch {
+  margin: 0 16px 20px; padding: 16px;
+  background: #16213e; border: 1px solid #0f3460; border-radius: 8px;
+}
+.gb-anime-batch h3 { font-size: 15px; margin: 0 0 8px; color: #eee; }
+.gb-anime-desc { font-size: 12px; color: #9bb4d4; line-height: 1.6; margin: 0 0 12px; }
+.gb-anime-actions { display: flex; gap: 8px; margin-bottom: 12px; }
+.gb-start-btn {
+  padding: 8px 18px; background: #3498db; color: #fff; border: none;
+  border-radius: 5px; cursor: pointer; font-size: 13px;
+}
+.gb-start-btn:disabled { opacity: 0.6; cursor: default; }
+.gb-stop-btn {
+  padding: 8px 18px; background: #e94560; color: #fff; border: none;
+  border-radius: 5px; cursor: pointer; font-size: 13px;
+}
+.gb-refresh-btn {
+  padding: 8px 14px; background: #0f3460; color: #cfe; border: 1px solid #1a3a6e;
+  border-radius: 5px; cursor: pointer; font-size: 13px;
+}
+.gb-progress { margin-top: 8px; }
+.gb-progress-bar {
+  width: 100%; height: 10px; background: #0f3460; border-radius: 5px; overflow: hidden;
+}
+.gb-progress-fill { height: 100%; background: #2ecc71; transition: width 0.3s; }
+.gb-progress-text { font-size: 12px; color: #ccc; margin-top: 6px; }
+.gb-progress-error { font-size: 12px; color: #e94560; margin-top: 4px; }
+.gb-fail-list { margin-top: 6px; font-size: 12px; color: #e9a; }
+.gb-fail-list ul { margin: 4px 0 0; padding-left: 18px; }
+
+/* Unified batch box */
+.gb-batch-box { margin: 0 16px 20px; padding: 16px; background: #16213e; border: 1px solid #0f3460; border-radius: 8px; }
+.gb-batch-box h3 { font-size: 15px; margin: 0 0 12px; color: #eee; }
+.gb-type-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
+.gb-type-card { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 10px 12px; background: #0f3460; border: 1px solid #1a3a6e; border-radius: 6px; cursor: pointer; color: #cfe; }
+.gb-type-card.active { border-color: #3498db; background: #14406e; }
+.gb-type-card:disabled { opacity: 0.6; cursor: default; }
+.gb-type-label { font-size: 13px; font-weight: 600; color: #fff; }
+.gb-type-desc { font-size: 11px; color: #9bb4d4; line-height: 1.5; }
+.gb-params { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.gb-params label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #9bb4d4; }
+.gb-params input { padding: 5px 8px; background: #0f3460; border: 1px solid #1a3a6e; color: #eee; border-radius: 4px; font-size: 13px; width: 140px; }
+.gb-hint { font-size: 11px; color: #9bb4d4; margin: 8px 0 0; }
+.gb-edit-prompt { margin-bottom: 12px; }
+.gb-edit-prompt label { display: block; font-size: 12px; color: #9bb4d4; margin-bottom: 4px; }
+.gb-edit-prompt textarea { width: 100%; padding: 8px; background: #0f3460; border: 1px solid #1a3a6e; color: #eee; border-radius: 4px; font-size: 12px; resize: vertical; box-sizing: border-box; }
+.gb-params select { padding: 5px 8px; background: #0f3460; border: 1px solid #1a3a6e; color: #eee; border-radius: 4px; font-size: 13px; }
+.gb-presets { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.gb-preset-btn { padding: 5px 12px; background: #0f3460; border: 1px solid #1a3a6e; color: #cfe; border-radius: 4px; cursor: pointer; font-size: 12px; }
+.gb-preset-btn.active { border-color: #3498db; background: #14406e; color: #fff; }
+.gb-preset-btn:disabled { opacity: 0.6; cursor: default; }

@@ -59,6 +59,12 @@ async def get_result(job_id: str, filename: str):
     return FileResponse(path)
 
 
+@router.post("/discard/{job_id}")
+async def discard_job(job_id: str):
+    """Mark a ComfyUI job as discarded."""
+    return comfyui_single.discard_job(job_id)
+
+
 class SaveComfyuiResultRequest(BaseModel):
     job_id: str
     character_name: str

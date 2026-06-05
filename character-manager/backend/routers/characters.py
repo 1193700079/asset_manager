@@ -19,6 +19,13 @@ def _parse_json(val):
         return None
 
 
+def _filter_active_media(media_list):
+    """Filter out soft-deleted media items (is_deleted=True) for normal display."""
+    if not media_list or not isinstance(media_list, list):
+        return media_list
+    return [m for m in media_list if not (isinstance(m, dict) and m.get("is_deleted"))]
+
+
 @router.get("", response_model=list[CharacterOut])
 async def list_characters(category: str | None = None):
     conn = get_conn()
@@ -44,7 +51,7 @@ async def list_characters(category: str | None = None):
             rows = cur.fetchall()
         for r in rows:
             r["attributes"] = _parse_json(r["attributes"])
-            r["media"] = _parse_json(r["media"])
+            r["media"] = _filter_active_media(_parse_json(r["media"]))
         return rows
     finally:
         put_conn(conn)

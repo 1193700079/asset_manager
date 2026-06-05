@@ -18,6 +18,7 @@ import ImageBatchAnalysis from "./Components/ImageBatchAnalysis";
 import ImagePreScreen from "./Components/ImagePreScreen";
 import ImagePipeline from "./Components/ImagePipeline";
 import VideoPreScreen from "./Components/VideoPreScreen";
+import PromptConverter from "./Components/PromptConverter";
 
 // Bump every time MainVideoUI persists a new AI annotation so VideoBrowser
 // can refetch the annotated-paths set and move the freshly-labeled video
@@ -56,6 +57,7 @@ export default function App() {
   const [showImageBatchPanel, setShowImageBatchPanel] = useState(false);
   const [showImagePreScreen, setShowImagePreScreen] = useState(false);
   const [showImagePipeline, setShowImagePipeline] = useState(false);
+  const [showPromptConverter, setShowPromptConverter] = useState(false);
   const [imageUnannotatedCount, setImageUnannotatedCount] = useState(0);
   const [imageFolders, setImageFolders] = useState<string[]>([]);
   const [imageAnnotationsVersion, setImageAnnotationsVersion] = useState(0);
@@ -224,6 +226,7 @@ export default function App() {
       if (panel === "prescreen") setShowImagePreScreen(true);
       else if (panel === "batch") setShowImageBatchPanel(true);
       else if (panel === "pipeline") setShowImagePipeline(true);
+      else if (panel === "prompt-converter") setShowPromptConverter(true);
       if (imgPath) setInitialImagePath(imgPath);
     }
   }, []);
@@ -258,6 +261,7 @@ export default function App() {
         setShowImagePreScreen(panel === "prescreen");
         setShowImageBatchPanel(panel === "batch");
         setShowImagePipeline(panel === "pipeline");
+        setShowPromptConverter(panel === "prompt-converter");
         setInitialImagePath(imgPath);
       } else {
         setMode('video');
@@ -469,6 +473,7 @@ export default function App() {
                   setShowImagePreScreen(next);
                   setShowImageBatchPanel(false);
                   setShowImagePipeline(false);
+                  setShowPromptConverter(false);
                   window.history.pushState(null, "", next ? "?mode=image&panel=prescreen" : "?mode=image");
                 }}
                 style={{
@@ -489,6 +494,7 @@ export default function App() {
                   setShowImageBatchPanel(next);
                   setShowImagePreScreen(false);
                   setShowImagePipeline(false);
+                  setShowPromptConverter(false);
                   window.history.pushState(null, "", next ? "?mode=image&panel=batch" : "?mode=image");
                 }}
                 style={{
@@ -509,6 +515,7 @@ export default function App() {
                   setShowImagePipeline(next);
                   setShowImagePreScreen(false);
                   setShowImageBatchPanel(false);
+                  setShowPromptConverter(false);
                   window.history.pushState(null, "", next ? "?mode=image&panel=pipeline" : "?mode=image");
                 }}
                 style={{
@@ -522,6 +529,27 @@ export default function App() {
                 }}
               >
                 预筛选 + 标注
+              </button>
+              <button
+                onClick={() => {
+                  const next = !showPromptConverter;
+                  setShowPromptConverter(next);
+                  setShowImagePreScreen(false);
+                  setShowImageBatchPanel(false);
+                  setShowImagePipeline(false);
+                  window.history.pushState(null, "", next ? "?mode=image&panel=prompt-converter" : "?mode=image");
+                }}
+                style={{
+                  padding: "6px 14px",
+                  border: showPromptConverter ? "1px solid #6366f1" : "1px solid #333",
+                  borderRadius: "6px",
+                  background: showPromptConverter ? "rgba(99,102,241,0.12)" : "transparent",
+                  color: showPromptConverter ? "#6366f1" : "#aaa",
+                  fontSize: "13px",
+                  cursor: "pointer",
+                }}
+              >
+                提示词转换
               </button>
             </div>
             {showImageBatchPanel && (
@@ -548,6 +576,9 @@ export default function App() {
                 onComplete={() => setImageAnnotationsVersion(v => v + 1)}
                 onClose={() => { setShowImagePipeline(false); window.history.pushState(null, "", "?mode=image"); }}
               />
+            )}
+            {showPromptConverter && (
+              <PromptConverter />
             )}
             <ImageBrowser
               annotationsVersion={imageAnnotationsVersion}

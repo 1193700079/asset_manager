@@ -17,6 +17,16 @@
   opacity: 0; transition: opacity 0.2s;
 }
 .video-card:hover .card-del { opacity: 1; }
+.video-card .card-hard-del {
+  position: absolute; top: 4px; right: 28px;
+  background: rgba(160,40,40,0.95); color: #fff; border: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.2s;
+}
+.video-card:hover .card-hard-del { opacity: 1; }
+.video-card .card-hard-del:hover { background: rgba(220,40,40,1); }
 .card-name {
   padding: 4px 6px; font-size: 10px; color: #aaa;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;

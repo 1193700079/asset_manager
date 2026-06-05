@@ -20,7 +20,7 @@ class SetAvatarRequest(BaseModel):
 @router.post("/set")
 async def set_avatar(data: SetAvatarRequest):
     """Detect face in image_url, crop a centered square, save as the character's avatar."""
-    result = avatar.generate_avatar(data.image_url)
+    result = await avatar.generate_avatar(data.image_url)
     if not result.get("ok"):
         return {"status": "error", "message": result.get("error", "avatar generation failed")}
 
@@ -94,7 +94,7 @@ async def batch_avatars(data: BatchAvatarRequest):
             continue
 
         processed += 1
-        result = avatar.generate_avatar(first_image)
+        result = await avatar.generate_avatar(first_image)
         if not result.get("ok"):
             failed += 1
             results.append({"id": row["id"], "name": row["name"], "ok": False,

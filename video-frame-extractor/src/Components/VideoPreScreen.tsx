@@ -105,7 +105,7 @@ export default function VideoPreScreen({ unannotatedCount, onComplete, onClose }
             .then(data => {
                 if (data?.interrupted) setInterruptedBatch(data.interrupted);
             })
-            .catch(() => {});
+            .catch(() => { });
     }, []);
 
     const handleResume = useCallback(async () => {
@@ -213,7 +213,7 @@ export default function VideoPreScreen({ unannotatedCount, onComplete, onClose }
             .then(data => {
                 if (data?.running && !pollingRef.current) startPolling();
             })
-            .catch(() => {});
+            .catch(() => { });
     }, [state, startPolling]);
 
     const handleStart = useCallback(async () => {
@@ -385,7 +385,7 @@ export default function VideoPreScreen({ unannotatedCount, onComplete, onClose }
                     const statusRes = await fetch("/api/video/prescreen/batch/status");
                     const statusData = await statusRes.json();
                     if (statusData?.interrupted) setInterruptedBatch(statusData.interrupted);
-                } catch {}
+                } catch { }
             }
         } finally {
             abortRef.current = null;

@@ -48,6 +48,10 @@
   background: #4fc3f7; color: #000; font-weight: bold;
 }
 .sidebar-toolbar .lib-btn:hover { background: #81d4fa; }
+.sidebar-toolbar .batch-btn {
+  background: #ff9800; color: #000; font-weight: bold;
+}
+.sidebar-toolbar .batch-btn:hover { background: #ffb74d; }
 .char-list { }
 .char-item {
   padding: 10px 16px; cursor: pointer;

@@ -21,6 +21,27 @@
 .gen-status-pre_release.active { background: #4a3000; border-color: #ff9800; color: #ffe0b2; }
 .gen-status-pending.active { background: #263238; border-color: #78909c; color: #cfd8dc; }
 
+/* Tab bar */
+.gen-tab-bar {
+  display: flex; gap: 4px; flex-wrap: wrap;
+  margin-bottom: 16px; padding-bottom: 12px;
+  border-bottom: 1px solid #0f3460;
+}
+.gen-tab {
+  padding: 6px 14px; border-radius: 6px; font-size: 12px;
+  border: 1px solid #1a3a6e; background: #0d1b30; color: #aaa;
+  cursor: pointer; transition: all 0.15s; font-weight: 500;
+  white-space: nowrap;
+}
+.gen-tab:hover { border-color: #4fc3f7; color: #eee; background: #102540; }
+.gen-tab.active { font-weight: 600; color: #fff; }
+.gen-tab-image.active { background: #0d47a1; border-color: #4fc3f7; }
+.gen-tab-video.active { background: #4a148c; border-color: #ff6fd8; }
+.gen-tab-sep {
+  width: 1px; background: #0f3460; margin: 0 4px;
+  align-self: stretch;
+}
+
 /* Sections */
 .gen-section { margin-bottom: 14px; }
 .gen-section-header {
@@ -199,41 +220,17 @@
   text-align: center; color: #666; padding: 20px 0; font-size: 13px;
 }
 
-/* Custom batch collapse toggle */
-.cb-collapse-toggle {
-  cursor: pointer; user-select: none;
-  padding: 6px 10px; margin: 6px -10px 0;
-  border-radius: 6px; transition: background 0.15s;
+/* ═══ ComfyUI ═══ */
+.gen-profile-preview {
+  display: flex; align-items: center; gap: 12px;
 }
-.cb-collapse-toggle:hover {
-  background: #16213e;
+.gen-profile-thumb {
+  width: 48px; height: 48px; object-fit: cover; border-radius: 6px;
+  border: 2px solid #e94560; box-shadow: 0 0 8px #e9456044;
 }
-.cb-collapse-toggle .gen-section-title {
-  font-size: 13px; color: #4fc3f7;
+.gen-profile-hint {
+  font-size: 12px; color: #888;
 }
-
-/* ═══ ComfyUI single processing ═══ */
-.comfyui-single-panel {
-  display: flex; flex-direction: column; gap: 10px;
-  margin-top: 6px;
-}
-
-.comfyui-type-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
-}
-.comfyui-type-btn {
-  display: flex; flex-direction: column; gap: 2px;
-  padding: 8px 10px; border-radius: 6px;
-  border: 1px solid #1a3a6e; background: #0d1b30;
-  cursor: pointer; text-align: left;
-  transition: border-color 0.15s, background 0.15s;
-}
-.comfyui-type-btn:hover { border-color: #4fc3f7; background: #102540; }
-.comfyui-type-btn.active { border-color: #e94560; background: #1e1030; }
-.comfyui-type-btn.active.comfyui-cat-video { border-color: #ff6fd8; }
-.comfyui-type-btn.active.comfyui-cat-image { border-color: #4fc3f7; }
-.comfyui-type-label { font-size: 12px; color: #e0e0e0; font-weight: 600; }
-.comfyui-type-desc { font-size: 10px; color: #888; line-height: 1.3; }
 
 .comfyui-hints {
   display: flex; flex-wrap: wrap; gap: 8px;

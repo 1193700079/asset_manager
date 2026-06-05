@@ -33,7 +33,7 @@ import express from "express";
 import OSS from "ali-oss";
 import pg from "pg";
 import multer from "multer";
-import { generateDescription, generateDescriptionMultiVote, generateVideoDescription, getActiveModelName, loadPendingTags, savePendingTags, DIMENSION_FILE_MAP, CYPHER_DIR, preScreenImage, preScreenImageBatch, preScreenVideo, generateFeedbackRules, getAvailableModels, preScreenImageMultiVote, preScreenImageBatchMultiVote, createLoadBalancer } from "./kimi.mjs";
+import { generateDescription, generateDescriptionMultiVote, generateVideoDescription, getActiveModelName, loadPendingTags, savePendingTags, DIMENSION_FILE_MAP, CYPHER_DIR, preScreenImage, preScreenImageBatch, preScreenVideo, generateFeedbackRules, getAvailableModels, preScreenImageMultiVote, preScreenImageBatchMultiVote, createLoadBalancer, convertImagePromptToVideo, getVideoPromptModels } from "./kimi.mjs";
 import { extractFrameAtTimestamp, checkFfmpegAvailable } from "./ffmpeg.mjs";
 
 const { Pool } = pg;
@@ -105,6 +105,8 @@ async function initDB() {
     // Migration: prescreen batch identifier — groups all rows produced by a
     // single batch run so the client can roll back the most recent batch.
     await pool.query(`ALTER TABLE saved_frames ADD COLUMN IF NOT EXISTS batch_id TEXT`);
+    // Migration: record which model generated the video_prompt
+    await pool.query(`ALTER TABLE saved_frames ADD COLUMN IF NOT EXISTS video_prompt_model TEXT`);
     // Prescreen batch history: lightweight audit trail for image/video
     // prescreen runs. Allows the UI to surface the last run summary and to
     // reset (delete) either the most recent batch or the entire history.
@@ -1844,7 +1846,7 @@ app.post('/api/video/analyze/batch', express.json(), async (req, res) => {
                 sendEvent('item_done', { index: i, videoPath, videoName, result: 'error', reason: err?.message || 'Unknown error' });
                 batchProgress.errors++;
             }
-            pool.query(`UPDATE prescreen_history SET progress_snapshot = $1 WHERE batch_id = $2`, [JSON.stringify({ ...batchProgress, processed: batchProgress.current }), videoBatchId]).catch(() => {});
+            pool.query(`UPDATE prescreen_history SET progress_snapshot = $1 WHERE batch_id = $2`, [JSON.stringify({ ...batchProgress, processed: batchProgress.current }), videoBatchId]).catch(() => { });
         }
 
         if (batchAborted) {
@@ -1852,12 +1854,12 @@ app.post('/api/video/analyze/batch', express.json(), async (req, res) => {
             await pool.query(
                 `UPDATE prescreen_history SET status = 'interrupted', progress_snapshot = $1 WHERE batch_id = $2`,
                 [JSON.stringify({ ...batchProgress, processed: batchProgress.current }), videoBatchId]
-            ).catch(() => {});
+            ).catch(() => { });
         } else {
             await pool.query(
                 `UPDATE prescreen_history SET completed_at = NOW(), count_passed = $1, count_rejected = $2, count_error = $3, status = 'completed', progress_snapshot = $4 WHERE batch_id = $5`,
                 [batchProgress.annotated, batchProgress.skipped, batchProgress.errors, JSON.stringify({ ...batchProgress, processed: batchProgress.current }), videoBatchId]
-            ).catch(() => {});
+            ).catch(() => { });
             sendEvent('done', { total: toProcess.length, annotated: batchProgress.annotated, skipped: batchProgress.skipped, errors: batchProgress.errors, batch_id: videoBatchId });
         }
     } catch (err) {
@@ -1888,7 +1890,7 @@ app.get('/api/video/analyze/batch/status', async (req, res) => {
                 interrupted: { batch_id: row.batch_id, config: row.batch_config, progress: row.progress_snapshot }
             });
         }
-    } catch {}
+    } catch { }
     sendJson(res, 200, { running: false, progress: null });
 });
 
@@ -2092,7 +2094,7 @@ app.get('/api/video/prescreen/batch/status', async (req, res) => {
                 interrupted: { batch_id: row.batch_id, config: row.batch_config, progress: row.progress_snapshot }
             });
         }
-    } catch {}
+    } catch { }
     sendJson(res, 200, { running: false, progress: null });
 });
 
@@ -2697,7 +2699,7 @@ app.get('/api/image/annotation', async (req, res) => {
     if (!imagePath) return sendJson(res, 400, { error: 'path required' });
     try {
         const result = await pool.query(
-            `SELECT id, video_path, video_name, prompt, pose, pose_en, tags, dimensions, style, description, model_id, created_at
+            `SELECT id, video_path, video_name, prompt, pose, pose_en, tags, dimensions, style, description, model_id, created_at, video_prompt, video_prompt_model
              FROM saved_frames WHERE video_path = $1 AND format = 'image_annotation'
              ORDER BY created_at DESC LIMIT 1`,
             [imagePath]
@@ -2730,6 +2732,8 @@ app.get('/api/image/annotation', async (req, res) => {
                 tags: tags || [],
                 model_id: row.model_id,
                 created_at: row.created_at,
+                video_prompt: row.video_prompt || null,
+                video_prompt_model: row.video_prompt_model || null,
             }
         });
     } catch (err) {
@@ -2769,7 +2773,7 @@ app.get('/api/image/analyze/batch/status', async (req, res) => {
                 interrupted: { batch_id: row.batch_id, config: row.batch_config, progress: row.progress_snapshot }
             });
         }
-    } catch {}
+    } catch { }
     sendJson(res, 200, { running: false, progress: null });
 });
 
@@ -2822,7 +2826,7 @@ app.get('/api/image/prescreen/batch/status', async (req, res) => {
                 interrupted: { batch_id: row.batch_id, config: row.batch_config, progress: row.progress_snapshot }
             });
         }
-    } catch {}
+    } catch { }
     sendJson(res, 200, { running: false, progress: null });
 });
 
@@ -3032,7 +3036,7 @@ app.post('/api/image/prescreen/batch', express.json(), async (req, res) => {
                                  VALUES ($1, $2, -1, '', '', $3, 'image_prescreen', $4, $5, $6, NOW())`,
                                 [img.path, img.name, screenResult.should_annotate ? 'passed' : 'rejected',
                                 JSON.stringify({ should_annotate: screenResult.should_annotate, reason: screenResult.reason, confidence: screenResult.confidence, category: screenResult.category || 'none', ...(screenResult.voters ? { voters: screenResult.voters } : {}), ...(screenResult.model_used ? { model_used: screenResult.model_used } : {}) }),
-                                    screenResult.model_used || null,
+                                screenResult.model_used || null,
                                     batchId]
                             );
 
@@ -3060,7 +3064,7 @@ app.post('/api/image/prescreen/batch', express.json(), async (req, res) => {
                 }));
 
                 prescreenBatchProgress.processed = Math.min(i + step, toProcess.length);
-                pool.query(`UPDATE prescreen_history SET progress_snapshot = $1 WHERE batch_id = $2`, [JSON.stringify(prescreenBatchProgress), batchId]).catch(() => {});
+                pool.query(`UPDATE prescreen_history SET progress_snapshot = $1 WHERE batch_id = $2`, [JSON.stringify(prescreenBatchProgress), batchId]).catch(() => { });
             }
         } else {
             // Original single-image mode (batchSize === 1)
@@ -3146,7 +3150,7 @@ app.post('/api/image/prescreen/batch', express.json(), async (req, res) => {
 
                 // Update processed count after batch completes
                 prescreenBatchProgress.processed = Math.min(i + concurrency, toProcess.length);
-                pool.query(`UPDATE prescreen_history SET progress_snapshot = $1 WHERE batch_id = $2`, [JSON.stringify(prescreenBatchProgress), batchId]).catch(() => {});
+                pool.query(`UPDATE prescreen_history SET progress_snapshot = $1 WHERE batch_id = $2`, [JSON.stringify(prescreenBatchProgress), batchId]).catch(() => { });
             }
         }
 
@@ -3156,12 +3160,12 @@ app.post('/api/image/prescreen/batch', express.json(), async (req, res) => {
             await pool.query(
                 `UPDATE prescreen_history SET status = 'interrupted', progress_snapshot = $1 WHERE batch_id = $2`,
                 [JSON.stringify(prescreenBatchProgress), batchId]
-            ).catch(() => {});
+            ).catch(() => { });
         } else {
             await pool.query(
                 `UPDATE prescreen_history SET completed_at = NOW(), count_passed = $1, count_rejected = $2, count_error = $3, status = 'completed', progress_snapshot = $4 WHERE batch_id = $5`,
                 [prescreenBatchProgress.passed, prescreenBatchProgress.rejected, prescreenBatchProgress.errors, JSON.stringify(prescreenBatchProgress), batchId]
-            ).catch(() => {});
+            ).catch(() => { });
             sendEvent('done', { progress: prescreenBatchProgress, batch_id: batchId });
         }
     } catch (err) {
@@ -3462,19 +3466,19 @@ app.post('/api/video/prescreen/batch', express.json(), async (req, res) => {
             }));
 
             videoPrescreenBatchProgress.processed = Math.min(i + concurrency, toProcess.length);
-            pool.query(`UPDATE prescreen_history SET progress_snapshot = $1 WHERE batch_id = $2`, [JSON.stringify(videoPrescreenBatchProgress), batchId]).catch(() => {});
+            pool.query(`UPDATE prescreen_history SET progress_snapshot = $1 WHERE batch_id = $2`, [JSON.stringify(videoPrescreenBatchProgress), batchId]).catch(() => { });
         }
 
         if (videoPrescreenBatchAborted) {
             await pool.query(
                 `UPDATE prescreen_history SET status = 'interrupted', progress_snapshot = $1 WHERE batch_id = $2`,
                 [JSON.stringify(videoPrescreenBatchProgress), batchId]
-            ).catch(() => {});
+            ).catch(() => { });
         } else {
             await pool.query(
                 `UPDATE prescreen_history SET completed_at = NOW(), count_passed = $1, count_rejected = $2, count_error = $3, status = 'completed', progress_snapshot = $4 WHERE batch_id = $5`,
                 [videoPrescreenBatchProgress.passed, videoPrescreenBatchProgress.rejected, videoPrescreenBatchProgress.errors, JSON.stringify(videoPrescreenBatchProgress), batchId]
-            ).catch(() => {});
+            ).catch(() => { });
             sendEvent('done', { progress: videoPrescreenBatchProgress, batch_id: batchId });
         }
     } catch (err) {
@@ -3641,7 +3645,7 @@ app.get('/api/image/pipeline/batch/status', async (req, res) => {
                 interrupted: { batch_id: row.batch_id, config: row.batch_config, progress: row.progress_snapshot }
             });
         }
-    } catch {}
+    } catch { }
     sendJson(res, 200, { running: false, progress: null });
 });
 
@@ -3927,7 +3931,7 @@ app.post('/api/image/pipeline/batch', express.json(), async (req, res) => {
             }));
 
             pipelineBatchProgress.processed = Math.min(i + concurrency, toProcess.length);
-            pool.query(`UPDATE prescreen_history SET progress_snapshot = $1 WHERE batch_id = $2`, [JSON.stringify(pipelineBatchProgress), batchId]).catch(() => {});
+            pool.query(`UPDATE prescreen_history SET progress_snapshot = $1 WHERE batch_id = $2`, [JSON.stringify(pipelineBatchProgress), batchId]).catch(() => { });
         }
 
         try {
@@ -4184,19 +4188,19 @@ app.post('/api/image/analyze/batch', express.json(), async (req, res) => {
             }));
 
             imageBatchProgress.processed = Math.min(i + concurrency, toProcess.length);
-            pool.query(`UPDATE prescreen_history SET progress_snapshot = $1 WHERE batch_id = $2`, [JSON.stringify(imageBatchProgress), imageBatchId]).catch(() => {});
+            pool.query(`UPDATE prescreen_history SET progress_snapshot = $1 WHERE batch_id = $2`, [JSON.stringify(imageBatchProgress), imageBatchId]).catch(() => { });
         }
 
         if (imageBatchAborted) {
             await pool.query(
                 `UPDATE prescreen_history SET status = 'interrupted', progress_snapshot = $1 WHERE batch_id = $2`,
                 [JSON.stringify(imageBatchProgress), imageBatchId]
-            ).catch(() => {});
+            ).catch(() => { });
         } else {
             await pool.query(
                 `UPDATE prescreen_history SET completed_at = NOW(), count_passed = $1, count_rejected = $2, count_error = $3, status = 'completed', progress_snapshot = $4 WHERE batch_id = $5`,
                 [imageBatchProgress.annotated, imageBatchProgress.skipped, imageBatchProgress.errors, JSON.stringify(imageBatchProgress), imageBatchId]
-            ).catch(() => {});
+            ).catch(() => { });
             sendEvent('done', { progress: imageBatchProgress, batch_id: imageBatchId });
         }
     } catch (err) {
@@ -4352,7 +4356,8 @@ app.get('/api/swapface/search', async (req, res) => {
         params.push(Number(limit), Number(offset));
         const query = `
             SELECT video_path, video_name, oss_url, prompt, tags, dimensions,
-                   style, description, model_id, created_at
+                   style, description, model_id, created_at,
+                   video_prompt, i2v_prompt
             FROM saved_frames
             ${where}
             ORDER BY created_at DESC
@@ -4460,6 +4465,260 @@ app.get('/api/swapface/tag-cloud', async (req, res) => {
     } catch (err) {
         sendJson(res, 500, { error: err?.message });
     }
+});
+
+// -------- Swapface materials: prescreened face_nsfw images (body source) -----
+// Returns random face_nsfw prescreened images, used by CM as faceswap body material.
+app.get('/api/swapface/materials', async (req, res) => {
+    setCors(res);
+    const { limit = 10 } = req.query;
+    try {
+        const where = `WHERE format = 'image_prescreen'
+            AND description ~ '^\\s*\\{'
+            AND (description::jsonb->>'category') = 'face_nsfw'`;
+        const query = `
+            SELECT video_path, video_name, oss_url, prompt, tags, dimensions,
+                   description, created_at
+            FROM saved_frames
+            ${where}
+            ORDER BY random()
+            LIMIT $1
+        `;
+        const result = await pool.query(query, [Number(limit)]);
+        const countResult = await pool.query(`SELECT count(*) FROM saved_frames ${where}`);
+        const rows = result.rows.map(r => {
+            if (r.created_at) r.created_at = r.created_at.toISOString();
+            r.image_url = `/api/images/serve?path=${encodeURIComponent(r.video_path)}`;
+            return r;
+        });
+        sendJson(res, 200, {
+            total: parseInt(countResult.rows[0]?.count || '0'),
+            items: rows,
+        });
+    } catch (err) {
+        console.error(`[swapface-materials] error:`, err?.message);
+        sendJson(res, 500, { error: err?.message });
+    }
+});
+
+// -------- Video prompts: records with a video_prompt and a first-frame image -
+// Returns random records that have video_prompt + an image, used by CM as the
+// source for batch video generation (video_prompt + first frame).
+app.get('/api/swapface/video-prompts', async (req, res) => {
+    setCors(res);
+    const { limit = 10 } = req.query;
+    try {
+        const where = `WHERE video_prompt IS NOT NULL AND video_prompt <> ''
+            AND oss_url IS NOT NULL AND oss_url <> ''`;
+        const query = `
+            SELECT video_path, video_name, oss_url, prompt, video_prompt, i2v_prompt,
+                   tags, dimensions, created_at
+            FROM saved_frames
+            ${where}
+            ORDER BY random()
+            LIMIT $1
+        `;
+        const result = await pool.query(query, [Number(limit)]);
+        const countResult = await pool.query(`SELECT count(*) FROM saved_frames ${where}`);
+        const rows = result.rows.map(r => {
+            if (r.created_at) r.created_at = r.created_at.toISOString();
+            r.image_url = `/api/images/serve?path=${encodeURIComponent(r.video_path)}`;
+            return r;
+        });
+        sendJson(res, 200, {
+            total: parseInt(countResult.rows[0]?.count || '0'),
+            items: rows,
+        });
+    } catch (err) {
+        console.error(`[swapface-video-prompts] error:`, err?.message);
+        sendJson(res, 500, { error: err?.message });
+    }
+});
+
+// -------- Prompt conversion: image prompt -> video prompt --------------------
+
+// GET /api/prompts/video-models — list available models for video prompt conversion
+app.get('/api/prompts/video-models', (req, res) => {
+    res.json(getVideoPromptModels());
+});
+
+// GET /api/prompts/convertible-frames — list frames that have image prompt but no video prompt
+app.get('/api/prompts/convertible-frames', async (req, res) => {
+    try {
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
+        const offset = (page - 1) * limit;
+
+        const countResult = await pool.query(
+            `SELECT COUNT(*) FROM saved_frames WHERE prompt IS NOT NULL AND prompt != '' AND (video_prompt IS NULL OR video_prompt = '')`
+        );
+        const total = parseInt(countResult.rows[0].count);
+
+        const totalAnnotatedResult = await pool.query(
+            `SELECT COUNT(*) FROM saved_frames WHERE prompt IS NOT NULL AND prompt != ''`
+        );
+        const totalAnnotated = parseInt(totalAnnotatedResult.rows[0].count);
+
+        const dataResult = await pool.query(
+            `SELECT id, video_path, timestamp, prompt, video_prompt, video_prompt_model FROM saved_frames
+             WHERE prompt IS NOT NULL AND prompt != '' AND (video_prompt IS NULL OR video_prompt = '')
+             ORDER BY id DESC LIMIT $1 OFFSET $2`,
+            [limit, offset]
+        );
+
+        res.json({ frames: dataResult.rows, total, totalAnnotated });
+    } catch (err) {
+        console.error('[convertible-frames] Error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/prompts/convert-to-video — SSE stream: batch convert image prompts to video prompts
+app.post('/api/prompts/convert-to-video', express.json(), async (req, res) => {
+    // SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders?.();
+
+    let clientConnected = true;
+
+    // Detect client disconnect — continue processing in background
+    res.on('close', () => {
+        clientConnected = false;
+        console.log('[convert-to-video] Client disconnected, continuing processing in background...');
+    });
+
+    const sendSSE = (data) => {
+        if (clientConnected) {
+            try {
+                res.write(`data: ${JSON.stringify(data)}\n\n`);
+                if (typeof res.flush === 'function') res.flush();
+            } catch (e) {
+                clientConnected = false;
+            }
+        }
+    };
+
+    try {
+        const { frameIds, filter, modelIds, modelId } = req.body || {};
+        // Immediately notify client that SSE connection is alive (before any DB query)
+        sendSSE({ type: 'connected', message: 'SSE connection established' });
+        console.log('[convert-to-video] Request body:', JSON.stringify({ frameIds: frameIds?.length, filter, modelIds, modelId }));
+        // Backward compatible: prefer modelIds array, fallback to single modelId
+        const selectedModels = Array.isArray(modelIds) && modelIds.length > 0
+            ? modelIds
+            : [modelId || 'qwen3.7-plus'];
+
+        let frames;
+
+        if (filter === 'missing_video_prompt') {
+            const result = await pool.query(
+                `SELECT id, prompt FROM saved_frames WHERE prompt IS NOT NULL AND prompt != '' AND (video_prompt IS NULL OR video_prompt = '') ORDER BY id`
+            );
+            frames = result.rows;
+        } else if (Array.isArray(frameIds) && frameIds.length > 0) {
+            const result = await pool.query(
+                `SELECT id, prompt FROM saved_frames WHERE id = ANY($1) AND prompt IS NOT NULL AND prompt != ''`,
+                [frameIds]
+            );
+            frames = result.rows;
+        } else {
+            sendSSE({ type: 'error', message: 'Must provide frameIds array or filter="missing_video_prompt"' });
+            if (clientConnected) res.end();
+            return;
+        }
+
+        if (frames.length === 0) {
+            sendSSE({ type: 'done', success: 0, failed: 0 });
+            if (clientConnected) res.end();
+            return;
+        }
+
+        const total = frames.length;
+        let successCount = 0;
+        let failedCount = 0;
+        let processed = 0;
+        let lastSentProgress = 0; // Track last sent progress to ensure monotonic increase
+
+        console.log(`[convert-to-video] Found ${total} frames to process`);
+        // Send total to client so frontend knows the full scope
+        sendSSE({ type: 'start', total });
+
+        // Helper: atomically increment processed and send monotonic progress
+        const reportProgress = () => {
+            processed++;
+            const current = Math.min(processed, total); // Never exceed total
+            if (current > lastSentProgress) {
+                lastSentProgress = current;
+                sendSSE({ type: 'progress', current, total });
+            }
+        };
+
+        // Round-robin assign frames to selected models
+        const modelGroups = {}; // { modelId: [{frame, originalIndex}, ...] }
+        frames.forEach((frame, idx) => {
+            const assignedModel = selectedModels[idx % selectedModels.length];
+            if (!modelGroups[assignedModel]) modelGroups[assignedModel] = [];
+            modelGroups[assignedModel].push({ frame, originalIndex: idx });
+        });
+
+        // Process each model group in parallel
+        await Promise.all(Object.entries(modelGroups).map(async ([groupModelId, groupItems]) => {
+            const groupFrames = groupItems.map(g => g.frame);
+
+            // Split into batches of 10
+            const BATCH_SIZE = 10;
+            const batches = [];
+            for (let i = 0; i < groupFrames.length; i += BATCH_SIZE) {
+                batches.push(groupFrames.slice(i, i + BATCH_SIZE));
+            }
+
+            // Process with concurrency limit of 2
+            const CONCURRENCY = 2;
+            for (let i = 0; i < batches.length; i += CONCURRENCY) {
+                const concurrentBatches = batches.slice(i, i + CONCURRENCY);
+
+                await Promise.all(concurrentBatches.map(async (batch) => {
+                    const prompts = batch.map(f => f.prompt);
+                    const { results: videoPrompts, modelId: usedModelId } = await convertImagePromptToVideo(prompts, groupModelId);
+
+                    for (let j = 0; j < batch.length; j++) {
+                        const frame = batch[j];
+                        const videoPrompt = videoPrompts[j];
+
+                        if (videoPrompt) {
+                            try {
+                                await pool.query(
+                                    `UPDATE saved_frames SET video_prompt = $1, video_prompt_model = $2 WHERE id = $3`,
+                                    [videoPrompt, usedModelId, frame.id]
+                                );
+                                successCount++;
+                                sendSSE({ type: 'result', frameId: frame.id, video_prompt: videoPrompt, modelId: usedModelId });
+                            } catch (dbErr) {
+                                failedCount++;
+                                console.error(`[convert-to-video] DB update failed for frame ${frame.id}:`, dbErr.message);
+                            }
+                        } else {
+                            failedCount++;
+                        }
+
+                        reportProgress();
+                    }
+                }));
+            }
+        }));
+
+        sendSSE({ type: 'done', success: successCount, failed: failedCount });
+        console.log(`[convert-to-video] Completed: ${successCount} success, ${failedCount} failed out of ${total} total`);
+    } catch (err) {
+        console.error('[convert-to-video] Error:', err.message);
+        sendSSE({ type: 'error', message: err.message });
+    }
+
+    // Always end the response to prevent connection leaks (even after client disconnect)
+    try { res.end(); } catch (e) { /* socket already closed */ }
 });
 
 app.use((req, res) => {

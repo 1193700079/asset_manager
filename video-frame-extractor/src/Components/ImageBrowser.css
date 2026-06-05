@@ -87,6 +87,176 @@
     }
 }
 
+/* ----- stat strip --------------------------------------------------------- */
+.ib-stat-strip {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    padding: 0 32px;
+    border-top: 1px solid var(--vb-line);
+    background: linear-gradient(
+        to right,
+        color-mix(in srgb, var(--ib-accent) 6%, transparent),
+        transparent 38%,
+        transparent 62%,
+        color-mix(in srgb, var(--ib-accent) 6%, transparent)
+    );
+    position: relative;
+    overflow: hidden;
+}
+
+.ib-stat-strip::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--text) 8%, transparent) 1px, transparent 0);
+    background-size: 14px 14px;
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+.ib-stat-strip-label {
+    display: flex;
+    align-items: center;
+    padding: 14px 20px 14px 0;
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ib-accent);
+    font-weight: 600;
+    white-space: nowrap;
+    border-right: 1px dashed var(--vb-line);
+    position: relative;
+    z-index: 1;
+}
+
+.ib-stat-strip-label::before {
+    content: "◆";
+    margin-right: 8px;
+    font-size: 8px;
+    transform: translateY(-1px);
+}
+
+.ib-stat-segments {
+    display: flex;
+    flex: 1;
+    align-items: stretch;
+    overflow-x: auto;
+    scrollbar-width: none;
+    position: relative;
+    z-index: 1;
+}
+
+.ib-stat-segments::-webkit-scrollbar { display: none; }
+
+.ib-stat-seg {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 12px 22px;
+    border-right: 1px dashed var(--vb-line);
+    white-space: nowrap;
+    transition: background 0.18s ease;
+}
+
+.ib-stat-seg:hover {
+    background: color-mix(in srgb, var(--ib-accent) 5%, transparent);
+}
+
+.ib-stat-seg-icon {
+    font-size: 14px;
+    transform: translateY(1px);
+}
+
+.ib-stat-seg-name {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--vb-mute);
+    font-weight: 500;
+}
+
+.ib-stat-seg-num {
+    font-family: "Fraunces", "Times New Roman", serif;
+    font-size: 22px;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+.ib-stat-seg--face .ib-stat-seg-num { color: #d946a3; }
+.ib-stat-seg--train .ib-stat-seg-num { color: #ea580c; }
+.ib-stat-seg--watermark .ib-stat-seg-num { color: #0891b2; }
+
+.ib-stat-seg-suffix {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--vb-mute);
+    font-feature-settings: "tnum" 1;
+}
+
+.ib-stat-grand {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    padding: 10px 0 10px 22px;
+    border-left: 1px solid var(--vb-line);
+    margin-left: auto;
+    position: relative;
+    z-index: 1;
+    min-width: 130px;
+}
+
+.ib-stat-grand-label {
+    font-size: 9px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--ib-accent);
+    font-weight: 600;
+}
+
+.ib-stat-grand-num {
+    font-family: "Fraunces", "Times New Roman", serif;
+    font-size: 28px;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+@media (max-width: 880px) {
+    .ib-stat-strip {
+        flex-direction: column;
+        padding: 12px 20px;
+        gap: 8px;
+    }
+    .ib-stat-strip-label {
+        border-right: none;
+        padding: 0;
+    }
+    .ib-stat-segments {
+        flex-wrap: wrap;
+    }
+    .ib-stat-seg {
+        padding: 8px 14px 8px 0;
+        border-right: none;
+    }
+    .ib-stat-grand {
+        margin-left: 0;
+        border-left: none;
+        border-top: 1px dashed var(--vb-line);
+        padding: 8px 0 0;
+        flex-direction: row;
+        align-items: baseline;
+        gap: 10px;
+    }
+}
+
 /* ----- toolbar ------------------------------------------------------------ */
 .ib-toolbar {
     display: flex;

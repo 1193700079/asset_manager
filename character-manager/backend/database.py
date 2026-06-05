@@ -13,7 +13,9 @@ def init_pool():
     for name, url in settings.datasources.items():
         try:
             _pools[name] = psycopg2.pool.ThreadedConnectionPool(
-                settings.pool_min, settings.pool_max, url
+                settings.pool_min, settings.pool_max, url,
+                application_name="character-manager",
+                options="-c timezone=UTC",
             )
         except Exception as e:
             print(f"[database] failed to init pool for '{name}': {e}")
@@ -41,6 +43,21 @@ def get_conn():
 
 def put_conn(conn):
     _resolve_pool().putconn(conn)
+
+
+def get_conn_for(name: str):
+    """Get a connection from a specific data source's pool (bypasses contextvar)."""
+    pool = _pools.get(name) or _pools.get(settings.default_data_source)
+    if pool is None:
+        raise RuntimeError(f"No connection pool available for data source '{name}'")
+    return pool.getconn()
+
+
+def put_conn_for(name: str, conn):
+    """Return a connection to a specific data source's pool (bypasses contextvar)."""
+    pool = _pools.get(name) or _pools.get(settings.default_data_source)
+    if pool is not None:
+        pool.putconn(conn)
 
 
 def close_pool():

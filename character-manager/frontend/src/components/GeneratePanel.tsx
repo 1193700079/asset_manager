@@ -2,17 +2,16 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { VFESearchItem } from '../types';
 import { api } from '../api/client';
 import Modal from './Modal';
-import CustomBatchPanel from './CustomBatchPanel';
 import './GeneratePanel.css';
 
 const VFE_BASE = 'http://localhost:8899';
 
-const TASK_TYPES = [
-  { value: 'faceswap', label: '换脸 (FaceSwap)', category: 'image', needsSource: true, needsFace: true },
-  { value: 'imageedit', label: '图像编辑 (ImageEdit)', category: 'image', needsSource: true, needsFace: false },
-  { value: 'zimage', label: '文生图 (ZImage)', category: 'image', needsSource: false, needsFace: false },
-  { value: 'wan_spicy', label: '图生视频 (Wan2.2)', category: 'video', needsSource: true, needsFace: false },
-  { value: 'wan_animate', label: '动画 (Animate)', category: 'video', needsSource: true, needsFace: false },
+const GEN_TABS = [
+  { value: 'faceswap', label: '换脸', category: 'image', needsSource: true, needsFace: true },
+  { value: 'imageedit', label: '图像编辑', category: 'image', needsSource: true, needsFace: false },
+  { value: 'zimage', label: '文生图', category: 'image', needsSource: false, needsFace: false },
+  { value: 'wan_spicy', label: '图生视频', category: 'video', needsSource: true, needsFace: false },
+  { value: 'wan_animate', label: '动画', category: 'video', needsSource: true, needsFace: false },
 ] as const;
 
 const BATCH_OPTIONS = [1, 2, 5, 10];
@@ -35,13 +34,14 @@ interface Props {
   characterId: number;
   characterName: string;
   characterStatus: string;
+  profileImages: string[];
   onRefresh: () => void;
   onStatusChange: (status: string) => void;
   onImageClick: (url: string) => void;
 }
 
 export default function GeneratePanel({
-  characterId, characterName, characterStatus,
+  characterId, characterName, characterStatus, profileImages,
   onRefresh, onStatusChange, onImageClick,
 }: Props) {
   // Source cards state
@@ -51,8 +51,8 @@ export default function GeneratePanel({
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set());
   const [excludePaths, setExcludePaths] = useState<string[]>([]);
 
-  // Generation config — separate prompts per category
-  const [taskType, setTaskType] = useState('faceswap');
+  // Generation config
+  const [activeTab, setActiveTab] = useState('faceswap');
   const [faceImage, setFaceImage] = useState('');
   const [imagePrompt, setImagePrompt] = useState('');
   const [videoPrompt, setVideoPrompt] = useState('');
@@ -67,12 +67,10 @@ export default function GeneratePanel({
   const [pollingIds, setPollingIds] = useState<Set<string>>(new Set());
   const pollInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const [genModalUrl, setGenModalUrl] = useState<string | null>(null);
-  const [showCustomBatch, setShowCustomBatch] = useState(false);
 
   // ── ComfyUI single processing state ──
-  const [showComfyui, setShowComfyui] = useState(false);
   const [comfyuiScripts, setComfyuiScripts] = useState<any[]>([]);
-  const [comfyuiType, setComfyuiType] = useState('comfy_swap');
+  const [comfyuiType, setComfyuiType] = useState('');
   const [comfyuiPrompt, setComfyuiPrompt] = useState('');
   const [comfyuiJobs, setComfyuiJobs] = useState<any[]>([]);
   const [comfyuiSubmitting, setComfyuiSubmitting] = useState(false);
@@ -82,91 +80,151 @@ export default function GeneratePanel({
   useEffect(() => {
     loadCards();
     loadTasks();
+    api.listComfyuiScripts().then(d => {
+      const scripts = d.scripts || [];
+      setComfyuiScripts(scripts);
+      if (scripts.length > 0 && !comfyuiType) {
+        setComfyuiType(scripts[0]!.key);
+      }
+    }).catch(() => { });
   }, [characterId]);
 
-  // Poll active tasks — 2s interval, with 120s timeout
+  // Timeout config per task type (seconds)
+  const getTimeoutForTask = (taskType: string): number => {
+    switch (taskType) {
+      case 'faceswap': return 120;
+      case 'zimage': return 300;
+      case 'imageedit': return 180;
+      case 'wan_spicy': return 600;
+      case 'wan_animate': return 600;
+      default: return 180;
+    }
+  };
+
   useEffect(() => {
     const activeTasks = tasks.filter(t => t.status === 'pending' || t.status === 'running');
-    // Auto-fail tasks stuck > 120s
     const now = Date.now();
     for (const t of activeTasks) {
       if (t.created_at) {
         const age = (now - new Date(t.created_at).getTime()) / 1000;
-        if (age > 120) {
+        const timeout = getTimeoutForTask(t.task_type);
+        if (age > timeout) {
           setTasks(prev => prev.map(x => x.task_id === t.task_id
-            ? { ...x, status: 'failed', error: '超时 (120s)，任务可能已失败' } : x));
+            ? { ...x, status: 'failed', error: `超时 (${timeout}s)，任务可能已失败` } : x));
           activeTasks.splice(activeTasks.indexOf(t), 1);
         }
       }
     }
     if (activeTasks.length > 0 && !pollInterval.current) {
-      pollInterval.current = setInterval(async () => {
-        activeTasks.forEach(t => pollTask(t.task_id));
+      pollInterval.current = setInterval(() => {
+        activeTasks.forEach(t => pollTaskRef.current(t.task_id));
       }, 2000);
-    }
-    if (activeTasks.length === 0 && pollInterval.current) {
+    } else if (activeTasks.length === 0 && pollInterval.current) {
       clearInterval(pollInterval.current);
       pollInterval.current = null;
     }
-    return () => {
-      if (pollInterval.current) clearInterval(pollInterval.current);
-    };
   }, [tasks]);
 
-  // ── ComfyUI single: load scripts + poll jobs ──
   useEffect(() => {
-    if (showComfyui && comfyuiScripts.length === 0) {
-      api.listComfyuiScripts().then(d => setComfyuiScripts(d.scripts || [])).catch(() => {});
-    }
-  }, [showComfyui]);
+    return () => {
+      if (pollInterval.current) {
+        clearInterval(pollInterval.current);
+        pollInterval.current = null;
+      }
+    };
+  }, []);
+
+  const isComfyuiTab = GEN_TABS.every(t => t.value !== activeTab);
+  const currentGenTab = GEN_TABS.find(t => t.value === activeTab);
+  const currentComfyuiScript = comfyuiScripts.find((s: any) => s.key === comfyuiType);
 
   const loadComfyuiJobs = useCallback(async () => {
     try {
       const d = await api.listComfyuiJobs(characterName);
       setComfyuiJobs(d.jobs || []);
-    } catch {}
+    } catch { }
   }, [characterName]);
 
+  const loadComfyuiJobsRef = useRef(loadComfyuiJobs);
+  loadComfyuiJobsRef.current = loadComfyuiJobs;
+
   useEffect(() => {
-    if (showComfyui) loadComfyuiJobs();
-  }, [showComfyui, loadComfyuiJobs]);
+    if (isComfyuiTab) loadComfyuiJobs();
+  }, [isComfyuiTab, loadComfyuiJobs]);
 
   useEffect(() => {
     const hasRunning = comfyuiJobs.some(j => j.status === 'running');
     if (hasRunning && !comfyuiPollRef.current) {
-      comfyuiPollRef.current = setInterval(loadComfyuiJobs, 2000);
+      comfyuiPollRef.current = setInterval(() => loadComfyuiJobsRef.current(), 2000);
     }
     if (!hasRunning && comfyuiPollRef.current) {
       clearInterval(comfyuiPollRef.current);
       comfyuiPollRef.current = null;
     }
+  }, [comfyuiJobs]);
+
+  useEffect(() => {
     return () => {
-      if (comfyuiPollRef.current) clearInterval(comfyuiPollRef.current);
+      if (comfyuiPollRef.current) {
+        clearInterval(comfyuiPollRef.current);
+        comfyuiPollRef.current = null;
+      }
     };
-  }, [comfyuiJobs, loadComfyuiJobs]);
+  }, []);
 
   const handleSubmitComfyui = async () => {
     const selectedSourceCards = sourceCards.filter(c => selectedCards.has(c.video_path));
-    const script = comfyuiScripts.find((s: any) => s.key === comfyuiType);
-    if (!script) return;
+    if (!currentComfyuiScript) return;
 
-    if (script.needs_image && selectedSourceCards.length === 0) {
-      alert('请先选择至少一张素材');
+    const profileImage = profileImages[0];
+    const hasImage = profileImage || selectedSourceCards.length > 0;
+    if (currentComfyuiScript.needs_image && !hasImage) {
+      alert('该角色没有 Profile 图片，请先上传');
       return;
     }
-    if (script.needs_face && !faceImage) {
+    if (currentComfyuiScript.needs_face && !faceImage) {
       alert('换脸需要提供人脸图片');
       return;
     }
-    if (script.needs_prompt && !comfyuiPrompt) {
+    if (currentComfyuiScript.needs_prompt && !comfyuiPrompt) {
       alert('请输入 prompt');
       return;
     }
 
+    // For comfy_video: if the selected card lacks a dedicated i2v_prompt or
+    // video_prompt, we'll fall back to the generic text-to-image prompt.
+    // Warn the user — the resulting video may look off because the prompt
+    // describes a static image, not motion/action.
+    const selectedCardForSubmit = sourceCards.find(c => selectedCards.has(c.video_path)) ?? null;
+    if (
+      comfyuiType === 'comfy_video' &&
+      selectedCardForSubmit &&
+      !selectedCardForSubmit.i2v_prompt &&
+      !selectedCardForSubmit.video_prompt
+    ) {
+      const proceed = confirm(
+        '⚠️ 提示\n\n' +
+        '你选的素材没有图生视频专用的 prompt (i2v_prompt / video_prompt)。\n\n' +
+        '系统会使用通用的文生图 prompt 作为降级方案，但生成出来的视频可能:\n' +
+        '  • 只描述静态画面，缺乏动作/运镜描述\n' +
+        '  • 与你的预期不太一致\n\n' +
+        '继续提交？'
+      );
+      if (!proceed) return;
+    }
+
     setComfyuiSubmitting(true);
     try {
-      const imageUrl = selectedSourceCards.length > 0 ? VFE_BASE + selectedSourceCards[0]!.oss_url : '';
-      const prompt = comfyuiPrompt || imagePrompt || selectedSourceCards[0]?.prompt || '';
+      const card = selectedSourceCards[0];
+      const imageUrl = profileImage || (card ? VFE_BASE + (card.oss_url || card.image_url) : '');
+      // For comfy_video: prefer i2v_prompt → video_prompt → prompt (ZImage).
+      // For other comfy tasks: use the standard prompt.
+      const fallbackPrompt = card
+        ? (comfyuiType === 'comfy_video'
+            ? (card.i2v_prompt || card.video_prompt || card.prompt || '')
+            : (card.prompt || ''))
+        : '';
+      const prompt = comfyuiPrompt || fallbackPrompt;
       const res = await api.submitComfyuiSingle({
         task_type: comfyuiType,
         image_url: imageUrl,
@@ -218,16 +276,38 @@ export default function GeneratePanel({
         next.delete(path);
       } else {
         next.add(path);
-        // Auto-fill prompts from this card's prompt
         const card = sourceCards.find(c => c.video_path === path);
-        if (card?.prompt) {
-          setImagePrompt(card.prompt);
-          setVideoPrompt(card.prompt);
+        if (card) {
+          // Text-to-image prompt (ZImage / imageedit)
+          const imgP = card.prompt || '';
+          // I2V prompt takes priority for any video/motion task
+          const vidP = card.i2v_prompt || card.video_prompt || card.prompt || '';
+          setImagePrompt(imgP);
+          setVideoPrompt(vidP);
+          // ComfyUI prompt: route by task type (comfy_video uses i2v_prompt)
+          const comfyP = comfyuiType === 'comfy_video' ? vidP : imgP;
+          setComfyuiPrompt(comfyP);
         }
       }
       return next;
     });
   };
+
+  // When user switches comfyui task type with a card already selected,
+  // re-derive the comfyui prompt from the appropriate card field so each
+  // task type shows its own dedicated prompt (i2v for comfy_video, etc.).
+  useEffect(() => {
+    if (selectedCards.size === 0) return;
+    // Use the most recently-selected card (last added = arbitrary, but set has order)
+    const lastPath = Array.from(selectedCards).pop();
+    if (!lastPath) return;
+    const card = sourceCards.find(c => c.video_path === lastPath);
+    if (!card) return;
+    const imgP = card.prompt || '';
+    const vidP = card.i2v_prompt || card.video_prompt || card.prompt || '';
+    setComfyuiPrompt(comfyuiType === 'comfy_video' ? vidP : imgP);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comfyuiType]);
 
   const handleUseAsFace = (card: VFESearchItem) => {
     setFaceImage(VFE_BASE + card.oss_url);
@@ -292,31 +372,33 @@ export default function GeneratePanel({
     } catch { /* ignore poll errors */ }
   };
 
+  const pollTaskRef = useRef(pollTask);
+  pollTaskRef.current = pollTask;
+
   const handleSubmit = async () => {
-    const currentTaskType = TASK_TYPES.find(t => t.value === taskType)!;
+    if (!currentGenTab) return;
     const selectedSourceCards = sourceCards.filter(c => selectedCards.has(c.video_path));
-    if (selectedSourceCards.length === 0 && currentTaskType.needsSource) {
+    if (selectedSourceCards.length === 0 && currentGenTab.needsSource) {
       alert('请选择至少一张素材作为源图');
       return;
     }
-    if (currentTaskType.needsFace && !faceImage) {
+    if (currentGenTab.needsFace && !faceImage) {
       alert('换脸需要提供人脸图片');
       return;
     }
 
     setSubmitting(true);
     try {
-      const sourceImage = selectedSourceCards.length > 0
-        ? VFE_BASE + selectedSourceCards[0]!.oss_url
-        : '';
+      const card = selectedSourceCards[0];
+      const sourceImage = card ? VFE_BASE + (card.oss_url || card.image_url) : '';
 
       const res = await api.createGeneration({
         character_id: characterId,
         character_name: characterName,
-        task_type: taskType,
+        task_type: activeTab,
         source_image: sourceImage,
         face_image: faceImage,
-        prompt: currentTaskType.category === 'video'
+        prompt: currentGenTab.category === 'video'
           ? (videoPrompt || selectedSourceCards[0]?.prompt || '')
           : (imagePrompt || selectedSourceCards[0]?.prompt || ''),
         batch_count: batchCount,
@@ -327,9 +409,8 @@ export default function GeneratePanel({
       if (res.task_ids.length > 0) {
         await loadTasks();
         setPollingIds(new Set(res.task_ids));
-        // Start polling immediately
         for (const tid of res.task_ids) {
-          setTimeout(() => pollTask(tid), 2000);
+          pollTask(tid);
         }
       }
       if (res.errors.length > 0) {
@@ -364,6 +445,19 @@ export default function GeneratePanel({
     }
   };
 
+  const handleDiscardComfyui = async (job_id: string) => {
+    try {
+      const res = await api.discardComfyuiJob(job_id);
+      if (res.status === 'ok') {
+        await loadComfyuiJobs();
+      } else {
+        alert('删除失败: ' + (res.message || '未知错误'));
+      }
+    } catch (e: any) {
+      alert('删除失败: ' + e.message);
+    }
+  };
+
   const handleBatchSave = async () => {
     const completedIds = tasks.filter(t => t.status === 'completed' || t.status === 'succeeded').map(t => t.task_id);
     if (completedIds.length === 0) return;
@@ -392,6 +486,7 @@ export default function GeneratePanel({
 
   const activeTaskCount = tasks.filter(t => t.status === 'pending' || t.status === 'running').length;
   const completedCount = tasks.filter(t => t.status === 'completed' || t.status === 'succeeded').length;
+  const discardableCount = tasks.filter(t => t.status === 'completed' || t.status === 'succeeded' || t.status === 'failed').length;
   const totalVisibleTasks = tasks.filter(t => t.status !== 'discarded').length;
 
   return (
@@ -410,10 +505,36 @@ export default function GeneratePanel({
         ))}
       </div>
 
-      {/* Source card gallery */}
+      {/* Tab bar */}
+      <div className="gen-tab-bar">
+        {GEN_TABS.map(t => (
+          <button
+            key={t.value}
+            className={`gen-tab gen-tab-${t.category} ${activeTab === t.value ? 'active' : ''}`}
+            onClick={() => setActiveTab(t.value)}
+          >
+            {t.label}
+          </button>
+        ))}
+        <div className="gen-tab-sep" />
+        {comfyuiScripts.map((s: any) => (
+          <button
+            key={s.key}
+            className={`gen-tab gen-tab-${s.category} ${activeTab === s.key ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab(s.key);
+              setComfyuiType(s.key);
+            }}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Source card gallery — always shown, used for source images and prompt selection */}
       <div className="gen-section">
         <div className="gen-section-header">
-          <span className="gen-section-title">素材选择</span>
+          <span className="gen-section-title">Prompt 素材选择</span>
           <div className="gen-section-controls">
             <select
               value={cardCount}
@@ -485,259 +606,245 @@ export default function GeneratePanel({
         )}
       </div>
 
-      {/* Generation config */}
+      {/* Config section */}
       <div className="gen-section">
         <div className="gen-section-header">
           <span className="gen-section-title">生成配置</span>
         </div>
         <div className="gen-config">
-          <div className="gen-config-row">
-            <label>类型:</label>
-            <select value={taskType} onChange={e => setTaskType(e.target.value)} className="gen-select gen-select-wide">
-              {TASK_TYPES.map(t => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-          </div>
-
-          {taskType === 'faceswap' && (
-            <div className="gen-config-row">
-              <label>人脸:</label>
-              {faceImage ? (
-                <div className="gen-face-preview-wrap">
-                  <img src={faceImage} className="gen-face-preview" />
-                  <button className="gen-btn gen-btn-sm" onClick={() => setFaceImage('')}>✕ 清除</button>
-                </div>
-              ) : (
-                <span className="gen-face-hint">点击上方素材的 👤 按钮设置人脸</span>
-              )}
-            </div>
-          )}
-
-          {/* Image prompt — for zimage, imageedit, faceswap */}
-          {(taskType === 'zimage' || taskType === 'imageedit' || taskType === 'faceswap') && (
-            <div className="gen-config-row gen-config-row-full">
-              <label>图片 Prompt:</label>
-              <textarea
-                value={imagePrompt}
-                onChange={e => setImagePrompt(e.target.value)}
-                placeholder={taskType === 'zimage' ? '描述要生成的图片内容...' : taskType === 'imageedit' ? '描述编辑效果 (如: 换上白色连衣裙)...' : '提示词 (可选)...'}
-                className="gen-textarea"
-                rows={2}
-              />
-            </div>
-          )}
-
-          {/* Video prompt — for wan_spicy, wan_animate */}
-          {(taskType === 'wan_spicy' || taskType === 'wan_animate') && (
-            <div className="gen-config-row gen-config-row-full">
-              <label>视频 Prompt:</label>
-              <textarea
-                value={videoPrompt}
-                onChange={e => setVideoPrompt(e.target.value)}
-                placeholder={taskType === 'wan_spicy' ? '描述视频动态效果...' : '描述动画效果...'}
-                className="gen-textarea"
-                rows={2}
-              />
-            </div>
-          )}
-
-          {(taskType === 'wan_spicy' || taskType === 'wan_animate') && (
+          {/* Standard gen tab config */}
+          {currentGenTab && (
             <>
+              {activeTab === 'faceswap' && (
+                <div className="gen-config-row">
+                  <label>人脸:</label>
+                  {faceImage ? (
+                    <div className="gen-face-preview-wrap">
+                      <img src={faceImage} className="gen-face-preview" />
+                      <button className="gen-btn gen-btn-sm" onClick={() => setFaceImage('')}>✕ 清除</button>
+                    </div>
+                  ) : (
+                    <span className="gen-face-hint">点击上方素材的 👤 按钮设置人脸</span>
+                  )}
+                </div>
+              )}
+
+              {(activeTab === 'zimage' || activeTab === 'imageedit' || activeTab === 'faceswap') && (
+                <div className="gen-config-row gen-config-row-full">
+                  <label>图片 Prompt:</label>
+                  <textarea
+                    value={imagePrompt}
+                    onChange={e => setImagePrompt(e.target.value)}
+                    placeholder={activeTab === 'zimage' ? '描述要生成的图片内容...' : activeTab === 'imageedit' ? '描述编辑效果 (如: 换上白色连衣裙)...' : '提示词 (可选)...'}
+                    className="gen-textarea"
+                    rows={2}
+                  />
+                </div>
+              )}
+
+              {(activeTab === 'wan_spicy' || activeTab === 'wan_animate') && (
+                <>
+                  <div className="gen-config-row gen-config-row-full">
+                    <label>视频 Prompt:</label>
+                    <textarea
+                      value={videoPrompt}
+                      onChange={e => setVideoPrompt(e.target.value)}
+                      placeholder={activeTab === 'wan_spicy' ? '描述视频动态效果...' : '描述动画效果...'}
+                      className="gen-textarea"
+                      rows={2}
+                    />
+                  </div>
+                  <div className="gen-config-row">
+                    <label>分辨率:</label>
+                    <select value={resolution} onChange={e => setResolution(e.target.value)} className="gen-select">
+                      <option value="480p">480p</option>
+                      <option value="720p">720p</option>
+                    </select>
+                  </div>
+                  <div className="gen-config-row">
+                    <label>时长:</label>
+                    <select value={duration} onChange={e => setDuration(Number(e.target.value))} className="gen-select">
+                      <option value={5}>5 秒</option>
+                      <option value={8}>8 秒</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
               <div className="gen-config-row">
-                <label>分辨率:</label>
-                <select value={resolution} onChange={e => setResolution(e.target.value)} className="gen-select">
-                  <option value="480p">480p</option>
-                  <option value="720p">720p</option>
+                <label>批量:</label>
+                <select value={batchCount} onChange={e => setBatchCount(Number(e.target.value))} className="gen-select">
+                  {BATCH_OPTIONS.map(n => <option key={n} value={n}>{n} 个</option>)}
                 </select>
               </div>
-              <div className="gen-config-row">
-                <label>时长:</label>
-                <select value={duration} onChange={e => setDuration(Number(e.target.value))} className="gen-select">
-                  <option value={5}>5 秒</option>
-                  <option value={8}>8 秒</option>
-                </select>
-              </div>
+
+              <button
+                className="gen-btn gen-btn-primary"
+                onClick={handleSubmit}
+                disabled={submitting}
+              >
+                {submitting ? '提交中...' : `🚀 生成 ${batchCount} 个${currentGenTab.label}`}
+              </button>
             </>
           )}
 
-          <div className="gen-config-row">
-            <label>批量:</label>
-            <select value={batchCount} onChange={e => setBatchCount(Number(e.target.value))} className="gen-select">
-              {BATCH_OPTIONS.map(n => <option key={n} value={n}>{n} 个</option>)}
-            </select>
-          </div>
+          {/* ComfyUI tab config */}
+          {isComfyuiTab && currentComfyuiScript && (
+            <>
+              {currentComfyuiScript.needs_image && profileImages.length > 0 && (
+                <div className="gen-config-row">
+                  <label>输入图片:</label>
+                  <div className="gen-profile-preview">
+                    <img src={profileImages[0]} className="gen-profile-thumb active" />
+                    <span className="gen-profile-hint">自动使用第一张 Profile 图片</span>
+                  </div>
+                </div>
+              )}
 
-          <button
-            className="gen-btn gen-btn-primary"
-            onClick={handleSubmit}
-            disabled={submitting}
-          >
-            {submitting ? '提交中...' : `🚀 生成 ${batchCount} 个${TASK_TYPES.find(t => t.value === taskType)?.label.split(' (')[0]}`}
-          </button>
-        </div>
-      </div>
+              {currentComfyuiScript.needs_prompt && (
+                <div className="gen-config-row gen-config-row-full">
+                  <label>ComfyUI Prompt:</label>
+                  <textarea
+                    value={comfyuiPrompt}
+                    onChange={e => setComfyuiPrompt(e.target.value)}
+                    placeholder="用上方选中的素材提示词，或自己输入..."
+                    className="gen-textarea"
+                    rows={2}
+                  />
+                </div>
+              )}
 
-      {/* Tasks section */}
-      <div className="gen-section">
-        <div className="gen-section-header">
-          <span className="gen-section-title">生成任务 ({totalVisibleTasks})</span>
-          <div className="gen-section-controls">
-            {activeTaskCount > 0 && <span className="gen-poll-badge">⏳ {activeTaskCount} 进行中</span>}
-            {completedCount > 0 && (
-              <>
-                <button className="gen-btn gen-btn-secondary gen-btn-sm" onClick={handleBatchSave}>
-                  💾 全部保存 ({completedCount})
-                </button>
-                <button className="gen-btn gen-btn-danger gen-btn-sm" onClick={handleBatchDiscard}>
-                  🗑 全部丢弃
-                </button>
-              </>
-            )}
-            <button className="gen-btn gen-btn-secondary gen-btn-sm" onClick={loadTasks}>刷新</button>
-          </div>
-        </div>
+              <div className="comfyui-hints">
+                {currentComfyuiScript.needs_image && profileImages.length > 0 && (
+                  <span className="comfyui-source-ok">✅ 使用 Profile 图片: {profileImages[0]!.split('/').pop()}</span>
+                )}
+                {currentComfyuiScript.needs_face && (
+                  <span>👤 需要设置人脸图 (素材卡片 👤 按钮)</span>
+                )}
+                {selectedCards.size > 0 && (
+                  <span className="comfyui-source-ok">✅ 已选 {selectedCards.size} 张素材</span>
+                )}
+                {(() => {
+                  if (!currentComfyuiScript.needs_prompt || selectedCards.size === 0) return null;
+                  const lastPath = Array.from(selectedCards).pop();
+                  const card = sourceCards.find(c => c.video_path === lastPath);
+                  if (!card) return null;
+                  if (comfyuiType === 'comfy_video') {
+                    if (card.i2v_prompt) return <span className="comfyui-source-ok">📹 已加载 I2V prompt (图生视频专用)</span>;
+                    if (card.video_prompt) return <span className="comfyui-source-ok">🎬 已加载 video_prompt (无 I2V，使用 video_prompt fallback)</span>;
+                    if (card.prompt) return <span style={{color:'#e94560'}}>⚠️ 该素材无 I2V prompt — 已降级使用通用 prompt</span>;
+                    return <span style={{color:'#e94560'}}>⚠️ 卡上没有任何可用的 prompt</span>;
+                  }
+                  if (card.prompt) return <span className="comfyui-source-ok">📝 已加载 ZImage prompt (文生图)</span>;
+                  return <span style={{color:'#e94560'}}>⚠️ 卡上没有 prompt</span>;
+                })()}
+              </div>
 
-        {loadingTasks && tasks.length === 0 ? (
-          <div className="gen-empty">加载任务中...</div>
-        ) : totalVisibleTasks === 0 ? (
-          <div className="gen-empty">暂无生成任务</div>
-        ) : (
-          <div className="gen-tasks">
-            {tasks.filter(t => t.status !== 'discarded').map(task => (
-              <GenTaskCard
-                key={task.task_id}
-                task={task}
-                onSave={() => handleSave(task)}
-                onDiscard={() => handleDiscard(task)}
-                onImageClick={onImageClick}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-      {/* ComfyUI single processing */}
-      <div className="gen-section">
-        <div className="gen-section-header cb-collapse-toggle" onClick={() => setShowComfyui(p => !p)}>
-          <span className="gen-section-title">
-            {showComfyui ? '▼' : '▶'} ComfyUI 单次处理
-          </span>
-          {comfyuiJobs.some(j => j.status === 'running') && (
-            <span className="gen-poll-badge">⏳ {comfyuiJobs.filter(j => j.status === 'running').length} 进行中</span>
+              <button
+                className="comfyui-submit-btn"
+                onClick={handleSubmitComfyui}
+                disabled={comfyuiSubmitting}
+              >
+                {comfyuiSubmitting ? '提交中...' : `🎨 提交 ${currentComfyuiScript.label}`}
+              </button>
+            </>
           )}
         </div>
-        {showComfyui && (
-          <div className="comfyui-single-panel">
-            {/* Script type buttons */}
-            <div className="comfyui-type-grid">
-              {comfyuiScripts.map((s: any) => (
-                <button
-                  key={s.key}
-                  className={`comfyui-type-btn ${comfyuiType === s.key ? 'active' : ''} comfyui-cat-${s.category}`}
-                  onClick={() => setComfyuiType(s.key)}
-                >
-                  <span className="comfyui-type-label">{s.label}</span>
-                  <span className="comfyui-type-desc">{s.description}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Prompt for ComfyUI */}
-            {comfyuiScripts.find((s: any) => s.key === comfyuiType)?.needs_prompt && (
-              <div className="gen-config-row gen-config-row-full">
-                <label>ComfyUI Prompt:</label>
-                <textarea
-                  value={comfyuiPrompt}
-                  onChange={e => setComfyuiPrompt(e.target.value)}
-                  placeholder="用上方选中的素材提示词，或自己输入..."
-                  className="gen-textarea"
-                  rows={2}
-                />
-              </div>
-            )}
-
-            {/* Hints */}
-            <div className="comfyui-hints">
-              {comfyuiScripts.find((s: any) => s.key === comfyuiType)?.needs_image && (
-                <span>📷 请先在素材区选择一张图片</span>
-              )}
-              {comfyuiScripts.find((s: any) => s.key === comfyuiType)?.needs_face && (
-                <span>👤 需要设置人脸图 (素材卡片 👤 按钮)</span>
-              )}
-              {selectedCards.size > 0 && (
-                <span className="comfyui-source-ok">✅ 已选 {selectedCards.size} 张素材</span>
-              )}
-            </div>
-
-            {/* Submit */}
-            <button
-              className="comfyui-submit-btn"
-              onClick={handleSubmitComfyui}
-              disabled={comfyuiSubmitting}
-            >
-              {comfyuiSubmitting ? '提交中...' : `🎨 提交 ${comfyuiScripts.find((s: any) => s.key === comfyuiType)?.label || 'ComfyUI'}`}
-            </button>
-
-            {/* Job results */}
-            {comfyuiJobs.length > 0 && (
-              <div className="comfyui-jobs">
-                <div className="comfyui-jobs-header">
-                  <span>本地 ComfyUI 任务</span>
-                  <button className="cb-refresh-btn" onClick={loadComfyuiJobs}>🔄</button>
-                </div>
-                {comfyuiJobs.map(j => (
-                  <div key={j.job_id} className={`comfyui-job comfyui-job-${j.status}`}>
-                    <div className="comfyui-job-row">
-                      <span className="comfyui-job-icon">
-                        {j.status === 'running' ? '⏳' : j.status === 'completed' ? '✅' : '❌'}
-                      </span>
-                      <span className="comfyui-job-label">{j.label}</span>
-                      <span className="comfyui-job-time">
-                        {j.created_at ? new Date(j.created_at).toLocaleTimeString() : ''}
-                      </span>
-                    </div>
-                    {j.status === 'completed' && j.result_url && (
-                      <div className="comfyui-job-result">
-                        {j.task_type === 'comfy_video' ? (
-                          <video src={j.result_url} controls muted className="comfyui-result-media" />
-                        ) : (
-                          <img src={j.result_url} className="comfyui-result-media"
-                               onClick={() => onImageClick(j.result_url)} />
-                        )}
-                        <button className="comfyui-save-btn" onClick={async () => {
-                          try {
-                            const mediaType = j.task_type === 'comfy_video' ? 'video' : 'image';
-                            const res = await api.saveComfyuiResult(j.job_id, characterName, mediaType);
-                            if (res.status === 'ok') {
-                              onRefresh();
-                              await loadComfyuiJobs();
-                            } else {
-                              alert('保存失败: ' + (res.message || '未知错误'));
-                            }
-                          } catch (e: any) {
-                            alert('保存失败: ' + e.message);
-                          }
-                        }}>💾 保存到角色</button>
-                      </div>
-                    )}
-                    {j.error && <div className="comfyui-job-error">{j.error}</div>}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
-      {/* Custom batch scripts */}
+      {/* Tasks section — unified for all tabs */}
       <div className="gen-section">
-        <div className="gen-section-header cb-collapse-toggle" onClick={() => setShowCustomBatch(p => !p)}>
+        <div className="gen-section-header">
           <span className="gen-section-title">
-            {showCustomBatch ? '▼' : '▶'} 自定义批处理 (ComfyUI)
+            {isComfyuiTab ? 'ComfyUI 任务' : '生成任务'} ({isComfyuiTab ? comfyuiJobs.filter(j => j.status !== 'discarded').length : totalVisibleTasks})
           </span>
+          <div className="gen-section-controls">
+            {isComfyuiTab ? (
+              <>
+                {comfyuiJobs.some(j => j.status === 'running') && (
+                  <span className="gen-poll-badge">⏳ {comfyuiJobs.filter(j => j.status === 'running').length} 进行中</span>
+                )}
+                <button className="gen-btn gen-btn-secondary gen-btn-sm" onClick={loadComfyuiJobs}>刷新</button>
+              </>
+            ) : (
+              <>
+                {activeTaskCount > 0 && <span className="gen-poll-badge">⏳ {activeTaskCount} 进行中</span>}
+                {completedCount > 0 && (
+                  <button className="gen-btn gen-btn-secondary gen-btn-sm" onClick={handleBatchSave}>
+                    💾 全部保存 ({completedCount})
+                  </button>
+                )}
+                {discardableCount > 0 && (
+                  <button className="gen-btn gen-btn-danger gen-btn-sm" onClick={handleBatchDiscard}>
+                    🗑 全部丢弃 ({discardableCount})
+                  </button>
+                )}
+                <button className="gen-btn gen-btn-secondary gen-btn-sm" onClick={loadTasks}>刷新</button>
+              </>
+            )}
+          </div>
         </div>
-        {showCustomBatch && (
-          <CustomBatchPanel characterName={characterName} />
+
+        {isComfyuiTab ? (
+          comfyuiJobs.filter(j => j.status !== 'discarded').length === 0 ? (
+            <div className="gen-empty">暂无 ComfyUI 任务</div>
+          ) : (
+            <div className="gen-tasks">
+              {comfyuiJobs.filter(j => j.status !== 'discarded').map(job => {
+                const task: GenTask = {
+                  task_id: job.job_id,
+                  task_type: job.task_type,
+                  status: job.status,
+                  prompt: job.prompt || '',
+                  ref_image_url: job.image_url || '',
+                  result_url: job.result_url,
+                  error: job.error,
+                  created_at: job.created_at,
+                  completed_at: job.completed_at,
+                };
+                return (
+                  <GenTaskCard
+                    key={job.job_id}
+                    task={task}
+                    onSave={async () => {
+                      try {
+                        const mediaType = job.task_type === 'comfy_video' ? 'video' : 'image';
+                        const res = await api.saveComfyuiResult(job.job_id, characterName, mediaType);
+                        if (res.status === 'ok') {
+                          onRefresh();
+                          await loadComfyuiJobs();
+                        } else {
+                          alert('保存失败: ' + (res.message || '未知错误'));
+                        }
+                      } catch (e: any) {
+                        alert('保存失败: ' + e.message);
+                      }
+                    }}
+                    onDiscard={() => handleDiscardComfyui(job.job_id)}
+                    onImageClick={onImageClick}
+                  />
+                );
+              })}
+            </div>
+          )
+        ) : (
+          loadingTasks && tasks.length === 0 ? (
+            <div className="gen-empty">加载任务中...</div>
+          ) : totalVisibleTasks === 0 ? (
+            <div className="gen-empty">暂无生成任务</div>
+          ) : (
+            <div className="gen-tasks">
+              {tasks.filter(t => t.status !== 'discarded').map(task => (
+                <GenTaskCard
+                  key={task.task_id}
+                  task={task}
+                  onSave={() => handleSave(task)}
+                  onDiscard={() => handleDiscard(task)}
+                  onImageClick={onImageClick}
+                />
+              ))}
+            </div>
+          )
         )}
       </div>
 
@@ -791,7 +898,7 @@ function GenTaskCard({
   }, [task.status, task.created_at, task.completed_at]);
 
   const isComplete = task.status === 'completed' || task.status === 'succeeded';
-  const isVideo = ['wan_spicy', 'wan_animate'].includes(task.task_type);
+  const isVideo = ['wan_spicy', 'wan_animate', 'comfy_video'].includes(task.task_type);
 
   return (
     <div className={`gen-task-card gen-task-${task.status}`}>
@@ -827,11 +934,13 @@ function GenTaskCard({
 
       {task.error && <div className="gen-task-error">{task.error}</div>}
 
-      {isComplete && (
+      {(isComplete || task.status === 'failed') && (
         <div className="gen-task-actions">
-          <button className="gen-btn gen-btn-primary gen-btn-sm" onClick={onSave}>
-            💾 保存为{isVideo ? '视频' : '图片'}
-          </button>
+          {isComplete && (
+            <button className="gen-btn gen-btn-primary gen-btn-sm" onClick={onSave}>
+              💾 保存为{isVideo ? '视频' : '图片'}
+            </button>
+          )}
           <button className="gen-btn gen-btn-danger gen-btn-sm" onClick={onDiscard}>
             🗑 丢弃
           </button>

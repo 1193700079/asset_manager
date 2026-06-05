@@ -81,7 +81,7 @@ SCRIPTS: dict[str, ScriptDef] = {
         needs_args=True,
         default_args={
             "prompts-per-image": "10",
-            "ports": "8188,8189,8190,8191,8192,8193,8194,8195",
+            "ports": "8188,8189,8190,8191,8192,8193,8194,8195,8288,8289,8290,8291,8292,8293,8294,8295",
         },
     ),
     "batch_video": ScriptDef(
@@ -92,7 +92,7 @@ SCRIPTS: dict[str, ScriptDef] = {
         description="LTX Video 工作流批量视频生成",
         needs_args=True,
         default_args={
-            "ports": "8188,8189,8190,8191",
+            "ports": "8188,8189,8190,8191,8192,8193,8194,8195,8288,8289,8290,8291,8292,8293,8294,8295",
         },
     ),
 }

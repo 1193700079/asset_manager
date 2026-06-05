@@ -16,6 +16,7 @@ export interface CharacterIndex {
   trash_generated: string[];
   trash_all: string[];
   media_status_map: Record<string, 'online' | 'pre_release' | 'pending'>;
+  pending_media: { url: string; type: string; source: string }[];
 }
 
 export interface CharacterListItem {
@@ -54,6 +55,10 @@ export interface VFESearchItem {
   style: string | null;
   model_id: string | null;
   created_at: string;
+  /** Video-level prompt (long-form description of the source video). */
+  video_prompt?: string | null;
+  /** Image-to-video prompt (motion/action description for I2V tasks like comfy_video). */
+  i2v_prompt?: string | null;
 }
 
 export interface TagCloudDimension {
@@ -67,4 +72,23 @@ export interface TagCloud {
   error?: string;
   _full_count?: number;
   _shown_count?: number;
+}
+
+export interface BatchJob {
+  job_id: string;
+  type: 'anime' | 'anime_direct' | 'faceswap' | 'zimage' | 'imageedit' | 'video' | 'avatar';
+  data_source: string;
+  per_character: number;
+  category: string | null;
+  engine?: 'smartstudio' | 'comfyui';
+  status: 'starting' | 'building' | 'running' | 'stopping' | 'stopped' | 'completed' | 'error';
+  total: number;
+  processed: number;
+  succeeded: number;
+  failed: number;
+  current: string | null;
+  results: { char?: string; id?: number; name?: string; ok: boolean; url?: string; error?: string }[];
+  error: string | null;
+  started_at: string;
+  finished_at: string | null;
 }

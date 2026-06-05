@@ -111,10 +111,60 @@ export default function CharacterDetail({ name, data, onRefresh }: Props) {
           characterId={data.id}
           characterName={name}
           characterStatus={status}
+          profileImages={data.profile_images}
           onRefresh={onRefresh}
           onStatusChange={handleStatusChange}
           onImageClick={setModalUrl}
         />
+      )}
+
+      {data.pending_media && data.pending_media.length > 0 && (
+        <>
+          <div className="section-title" style={{ color: '#f1c40f' }}>
+            待选区 / 待审核 ({data.pending_media.length})
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+              <button className="pending-adopt-all" onClick={async () => {
+                if (!confirm(`全部采用 ${data.pending_media.length} 张到 Profile？`)) return;
+                await api.pendingAdoptAll(data.id);
+                onRefresh();
+              }}>全部采用</button>
+              <button className="pending-del-all" onClick={async () => {
+                if (!confirm(`⚠️ 彻底删除全部 ${data.pending_media.length} 张待选图？不可恢复。`)) return;
+                await api.pendingDeleteAll(data.id);
+                onRefresh();
+              }}>全部删除</button>
+            </div>
+          </div>
+          <div className="pending-grid">
+            {data.pending_media.map(pm => (
+              <div key={pm.url} className="pending-card">
+                {pm.type === 'video' ? (
+                  <video src={pm.url} controls preload="none" />
+                ) : (
+                  <img src={pm.url} loading="lazy" onClick={() => setModalUrl(pm.url)} />
+                )}
+                {pm.source && <div className="pending-source">{pm.source}</div>}
+                <div className="pending-actions">
+                  <button className="pending-adopt" onClick={async () => {
+                    await api.updateMediaStatus(data.id, pm.url, 'online');
+                    onRefresh();
+                  }}>采用</button>
+                  <button className="pending-discard" onClick={async () => {
+                    if (!confirm('移到回收站？(可恢复)')) return;
+                    await api.softDelete(name, pm.url, false);
+                    onRefresh();
+                  }}>丢弃</button>
+                  <button className="pending-harddel" onClick={async () => {
+                    if (!confirm('⚠️ 彻底删除这张图及其 OSS 文件？不可恢复。')) return;
+                    const r = await api.softDelete(name, pm.url, true);
+                    if (r.status !== 'ok') alert(`失败: ${r.mode || '未知错误'}`);
+                    onRefresh();
+                  }}>彻底删除</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       <div className="section-title">Profile Images</div>

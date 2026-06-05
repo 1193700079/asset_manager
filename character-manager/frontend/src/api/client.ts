@@ -5,6 +5,7 @@ import type {
   RefImage,
   VFESearchItem,
   TagCloud,
+  BatchJob,
 } from '../types';
 
 const BASE = '';
@@ -58,6 +59,41 @@ export const api = {
       body: JSON.stringify({ character_id: characterId, voice_id: voiceId }),
     }),
 
+  batchGenerateStart: (
+    type: 'anime' | 'anime_direct' | 'faceswap' | 'zimage' | 'imageedit' | 'video' | 'avatar',
+    perCharacter = 10,
+    category: string | null = null,
+    width = 1024,
+    height = 1536,
+    seed = 0,
+    editPrompt: string | null = null,
+    engine: 'smartstudio' | 'comfyui' = 'smartstudio',
+  ) =>
+    fetchJson<{ status: string; job_id?: string; message?: string }>(
+      '/api/generation/batch-generate',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, per_character: perCharacter, category, width, height, seed, edit_prompt: editPrompt, engine }),
+      }
+    ),
+
+  batchGenerateAnimeDefaultPrompt: () =>
+    fetchJson<{ status: string; edit_prompt: string }>(
+      '/api/generation/batch-generate/anime-default-prompt'
+    ),
+
+  batchGenerateStatus: () =>
+    fetchJson<{ status: string; job: BatchJob | null }>(
+      '/api/generation/batch-generate/status'
+    ),
+
+  batchGenerateStop: () =>
+    fetchJson<{ status: string; message?: string }>(
+      '/api/generation/batch-generate/stop',
+      { method: 'POST' }
+    ),
+
   getIndex: () =>
     fetchJson<Record<string, CharacterIndex>>('/api/index'),
 
@@ -67,11 +103,26 @@ export const api = {
   getCharacterList: () =>
     fetchJson<CharacterListItem[]>('/api/characters/list'),
 
-  softDelete: (name: string, imageUrl: string) =>
-    fetchJson<{ status: string }>('/api/media/delete', {
+  softDelete: (name: string, imageUrl: string, hard: boolean = false) =>
+    fetchJson<{ status: string; mode?: string; removed_entries?: number; oss_deleted?: boolean; oss_message?: string; trashed?: number }>(
+      '/api/media/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, image_url: imageUrl, hard }),
+      }),
+
+  pendingAdoptAll: (characterId: number) =>
+    fetchJson<{ status: string; adopted?: number }>('/api/media/pending/adopt-all', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, image_url: imageUrl }),
+      body: JSON.stringify({ character_id: characterId }),
+    }),
+
+  pendingDeleteAll: (characterId: number) =>
+    fetchJson<{ status: string; deleted?: number }>('/api/media/pending/delete-all', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ character_id: characterId }),
     }),
 
   restore: (name: string, imageUrl: string) =>
@@ -350,5 +401,11 @@ export const api = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ job_id, character_name, media_type }),
+      }),
+
+  discardComfyuiJob: (job_id: string) =>
+    fetchJson<{ status: string; job_id?: string; message?: string }>(
+      `/api/comfyui/discard/${job_id}`, {
+        method: 'POST',
       }),
 };

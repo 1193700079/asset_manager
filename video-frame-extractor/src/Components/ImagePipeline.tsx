@@ -115,14 +115,14 @@ export default function ImagePipeline({ unannotatedCount, folders, onComplete, o
         fetch('/api/prescreen/models')
             .then(r => r.ok ? r.json() : null)
             .then(data => { if (data?.models) setAvailableModels(data.models); })
-            .catch(() => {});
+            .catch(() => { });
     }, []);
 
     useEffect(() => {
         fetch('/api/image/pipeline/batch/status')
             .then(r => r.ok ? r.json() : null)
             .then(data => { if (data?.interrupted) setInterruptedBatch(data.interrupted); })
-            .catch(() => {});
+            .catch(() => { });
     }, []);
 
     useEffect(() => {
@@ -130,7 +130,7 @@ export default function ImagePipeline({ unannotatedCount, folders, onComplete, o
         fetch('/api/image/pipeline/batch/status')
             .then(r => r.ok ? r.json() : null)
             .then(data => { if (data?.running && !pollingRef.current) startPolling(); })
-            .catch(() => {});
+            .catch(() => { });
     }, [state]);
 
     useEffect(() => {
@@ -314,7 +314,7 @@ export default function ImagePipeline({ unannotatedCount, folders, onComplete, o
                     const statusRes = await fetch("/api/image/pipeline/batch/status");
                     const statusData = await statusRes.json();
                     if (statusData?.interrupted) setInterruptedBatch(statusData.interrupted);
-                } catch {}
+                } catch { }
             }
         } finally {
             abortRef.current = null;
@@ -355,7 +355,7 @@ export default function ImagePipeline({ unannotatedCount, folders, onComplete, o
     }, [handleStart]);
 
     const handleStop = async () => {
-        try { await fetch('/api/image/pipeline/batch/stop', { method: 'POST' }); } catch {}
+        try { await fetch('/api/image/pipeline/batch/stop', { method: 'POST' }); } catch { }
         abortRef.current?.abort();
     };
 
@@ -430,7 +430,7 @@ export default function ImagePipeline({ unannotatedCount, folders, onComplete, o
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                                         <span className="prescreen-history-time" style={{ fontSize: 11 }}>
-                                            {(() => { try { const d = new Date(h.started_at); const pad = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; } catch { return h.started_at; } })()}
+                                            {(() => { try { const d = new Date(h.started_at); const pad = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; } catch { return h.started_at; } })()}
                                         </span>
                                         <span style={{ color: "#4ade80", fontSize: 11 }}>✓{h.count_passed}</span>
                                         <span style={{ color: "#f87171", fontSize: 11 }}>✗{h.count_rejected}</span>

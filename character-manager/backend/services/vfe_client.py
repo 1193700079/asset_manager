@@ -38,6 +38,22 @@ async def search_images(
     return resp.json()
 
 
+async def get_faceswap_materials(limit: int = 10) -> dict:
+    """Random face_nsfw prescreened images used as faceswap body material."""
+    client = get_client()
+    resp = await client.get("/api/swapface/materials", params={"limit": limit})
+    resp.raise_for_status()
+    return resp.json()
+
+
+async def get_video_prompts(limit: int = 10) -> dict:
+    """Random records with video_prompt + a first-frame image."""
+    client = get_client()
+    resp = await client.get("/api/swapface/video-prompts", params={"limit": limit})
+    resp.raise_for_status()
+    return resp.json()
+
+
 async def get_tag_cloud() -> dict:
     client = get_client()
     resp = await client.get("/api/swapface/tag-cloud")

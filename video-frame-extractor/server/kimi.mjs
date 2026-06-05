@@ -17,6 +17,12 @@ const SYSTEM_PROMPT_KIMI = readFileSync('/mnt/cypher/project/opencode-spicy/syst
 const SYSTEM_PROMPT_QWEN = readFileSync('/mnt/cypher/project/opencode-spicy/system_prompt_qwen.txt', 'utf-8');
 const SYSTEM_PROMPT_DSV4 = readFileSync('/mnt/cypher/project/opencode-spicy/system_prompt_dsv4.txt', 'utf-8');
 
+// Video prompt system prompts (separate files for per-model customization).
+const VIDEO_PROMPT_SYSTEM_PROMPT_QWEN = readFileSync('/mnt/cypher/project/opencode-spicy/video_prompt_system_prompt_qwen.txt', 'utf-8');
+const VIDEO_PROMPT_SYSTEM_PROMPT_KIMI = readFileSync('/mnt/cypher/project/opencode-spicy/video_prompt_system_prompt_kimi.txt', 'utf-8');
+const VIDEO_PROMPT_SYSTEM_PROMPT_GLM = readFileSync('/mnt/cypher/project/opencode-spicy/system_prompt_glm5.1.txt', 'utf-8');
+const VIDEO_PROMPT_SYSTEM_PROMPT_DSV4 = readFileSync('/mnt/cypher/project/opencode-spicy/system_prompt_dsv4.txt', 'utf-8');
+
 // NSFW prompt template library — full integration (all 14 modules).
 // Kimi K2.6 (256K ctx) and Qwen 3.6 Plus (1M ctx) can handle the full content.
 const NSFW_TEMPLATES_DIR = '/mnt/cypher/project/asset_manager/nsfw-prompt-templates-asian';
@@ -1118,6 +1124,127 @@ ${feedbackSection}
         keyFrames: validatedKeyFrames,
         modelId: modelName,
     };
+}
+
+/**
+ * Convert image prompts to video prompts using AI.
+ * Processes in batches of up to 10 prompts per API call.
+ * @param {string[]} imagePrompts - array of image prompt texts
+ * @returns {Promise<(string|null)[]>} array of video prompt strings (null for failed conversions)
+ */
+// Video prompt model configuration table
+const VIDEO_PROMPT_MODELS = {
+    'qwen3.7-plus': { modelName: 'qwen3.7-plus', label: 'Qwen 3.7 Plus', systemPrompt: VIDEO_PROMPT_SYSTEM_PROMPT_QWEN },
+    'qwen3.6-plus': { modelName: 'qwen3.6-plus', label: 'Qwen 3.6 Plus', systemPrompt: VIDEO_PROMPT_SYSTEM_PROMPT_QWEN },
+    'qwen3.5-plus': { modelName: 'qwen3.5-plus', label: 'Qwen 3.5 Plus', systemPrompt: VIDEO_PROMPT_SYSTEM_PROMPT_QWEN },
+    'kimi-k2.6': { modelName: 'kimi-k2.6', label: 'Kimi K2.6', systemPrompt: VIDEO_PROMPT_SYSTEM_PROMPT_KIMI },
+    'kimi-k2.5': { modelName: 'kimi-k2.5', label: 'Kimi K2.5', systemPrompt: VIDEO_PROMPT_SYSTEM_PROMPT_KIMI },
+    'qwen3.7-max': { modelName: 'qwen3.7-max', label: 'Qwen 3.7 Max', systemPrompt: VIDEO_PROMPT_SYSTEM_PROMPT_QWEN },
+    'qwen3.6-max': { modelName: 'qwen3.6-max', label: 'Qwen 3.6 Max', systemPrompt: VIDEO_PROMPT_SYSTEM_PROMPT_QWEN },
+    'glm5.1': { modelName: 'glm4-plus', label: 'GLM 5.1', systemPrompt: VIDEO_PROMPT_SYSTEM_PROMPT_GLM },
+    'deepseek-v4-pro': { modelName: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro', systemPrompt: VIDEO_PROMPT_SYSTEM_PROMPT_DSV4 },
+};
+
+/**
+ * Get available video prompt models list
+ */
+export function getVideoPromptModels() {
+    return Object.entries(VIDEO_PROMPT_MODELS).map(([id, config]) => ({
+        id,
+        label: config.label
+    }));
+}
+
+export async function convertImagePromptToVideo(imagePrompts, modelId = 'qwen3.7-plus') {
+    if (!imagePrompts || imagePrompts.length === 0) return { results: [], modelId };
+
+    const BATCH_SIZE = 10;
+    const results = [];
+
+    const modelConfig = VIDEO_PROMPT_MODELS[modelId] || VIDEO_PROMPT_MODELS['qwen3.7-plus'];
+    const systemPrompt = modelConfig.systemPrompt;
+
+    for (let i = 0; i < imagePrompts.length; i += BATCH_SIZE) {
+        const batch = imagePrompts.slice(i, i + BATCH_SIZE);
+        const numberedList = batch.map((p, idx) => `${idx + 1}. ${p}`).join('\n');
+
+        try {
+            const response = await fetch(`${DASHSCOPE_BASE_URL}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${DASHSCOPE_API_KEY}`,
+                    'X-DashScope-DataInspection': JSON.stringify({ input: 'disable', output: 'disable' }),
+                },
+                body: JSON.stringify({
+                    model: modelConfig.modelName,
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: numberedList },
+                    ],
+                    max_tokens: 4096,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`[convertImagePromptToVideo] API error (${response.status}): ${errorText}`);
+                results.push(...batch.map(() => null));
+                continue;
+            }
+
+            const data = await response.json();
+            if (data?.error) {
+                const errMsg = typeof data.error === 'string' ? data.error : (data.error.message || JSON.stringify(data.error));
+                console.error(`[convertImagePromptToVideo] API returned error: ${errMsg}`);
+                results.push(...batch.map(() => null));
+                continue;
+            }
+            if (!data?.choices?.[0]?.message?.content) {
+                console.error('[convertImagePromptToVideo] Unexpected response shape');
+                results.push(...batch.map(() => null));
+                continue;
+            }
+
+            const content = data.choices[0].message.content;
+            let jsonStr = content;
+            const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+            if (jsonMatch) {
+                jsonStr = jsonMatch[1].trim();
+            } else {
+                const firstBracket = content.indexOf('[');
+                if (firstBracket > 0) jsonStr = content.slice(firstBracket);
+            }
+
+            let parsed;
+            try {
+                parsed = JSON.parse(jsonStr);
+            } catch (parseErr) {
+                // Fallback: try splitting by newlines for individual prompts
+                console.warn(`[convertImagePromptToVideo] JSON parse failed, trying line split. Error: ${parseErr.message}`);
+                const lines = content.split('\n').filter(l => l.trim().length > 0);
+                if (lines.length >= batch.length) {
+                    parsed = lines.slice(0, batch.length);
+                } else {
+                    results.push(...batch.map(() => null));
+                    continue;
+                }
+            }
+
+            if (Array.isArray(parsed)) {
+                for (let j = 0; j < batch.length; j++) {
+                    results.push(parsed[j] && typeof parsed[j] === 'string' ? parsed[j] : null);
+                }
+            } else {
+                results.push(...batch.map(() => null));
+            }
+        } catch (err) {
+            console.error(`[convertImagePromptToVideo] Batch error: ${err.message}`);
+            results.push(...batch.map(() => null));
+        }
+    }
+
+    return { results, modelId };
 }
 
 // Exported helpers for tag review API

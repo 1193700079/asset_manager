@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import CreateAlert from "../Scripts/CreateAlert";
 
 interface PendingTag {
     id: string;
@@ -82,11 +83,13 @@ export default function TagReview({ onBack }: TagReviewProps) {
             });
             const data = await res.json();
             if (data.success) {
+                CreateAlert(`已确认 ${targetIds.length} 个标签`);
                 setSelected(new Set());
                 await fetchPending();
             }
         } catch (err) {
             console.error("Approve failed:", err);
+            CreateAlert("确认失败，请重试");
         }
     }
 
@@ -101,11 +104,13 @@ export default function TagReview({ onBack }: TagReviewProps) {
             });
             const data = await res.json();
             if (data.success) {
+                CreateAlert(`已拒绝 ${targetIds.length} 个标签`);
                 setSelected(new Set());
                 await fetchPending();
             }
         } catch (err) {
             console.error("Reject failed:", err);
+            CreateAlert("拒绝失败，请重试");
         }
     }
 

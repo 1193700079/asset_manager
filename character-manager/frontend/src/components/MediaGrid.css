@@ -21,6 +21,16 @@
   opacity: 0; transition: opacity 0.2s;
 }
 .media-card:hover .card-del { opacity: 1; }
+.card-hard-del {
+  position: absolute; top: 4px; right: 28px;
+  background: rgba(160,40,40,0.95); color: #fff; border: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.2s;
+}
+.media-card:hover .card-hard-del { opacity: 1; }
+.card-hard-del:hover { background: rgba(220,40,40,1); }
 .card-avatar-btn {
   position: absolute; top: 30px; right: 4px;
   background: rgba(52,152,219,0.9); color: #fff; border: none;

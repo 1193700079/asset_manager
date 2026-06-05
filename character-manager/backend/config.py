@@ -18,6 +18,14 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:8888", "http://localhost:3000"]
     smartstudio_api_key: str = ""
     smartstudio_base_url: str = "https://smartstudio-intl.aliyuncs.com"
+    supabase_url: str = ""
+    supabase_service_role_key: str = ""
+    
+    oss_access_key_id: str = ""
+    oss_access_key_secret: str = ""
+    oss_endpoint: str = "https://oss-ap-southeast-1.aliyuncs.com"
+    oss_bucket: str = "ecjoy"
+    oss_prefix: str = "candy_ai/comfyui_output/"
 
     class Config:
         env_file = ".env"

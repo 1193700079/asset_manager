@@ -1,21 +1,34 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { CharacterIndex, CategoryCount } from './types';
 import { api, getDataSource, setDataSource } from './api/client';
+import { useHashRoute } from './hooks/useHashRoute';
 import Sidebar from './components/Sidebar';
 import CharacterDetail from './components/CharacterDetail';
 import AssetLibrary from './components/AssetLibrary';
+import GlobalBatchView from './components/GlobalBatchView';
 import './App.css';
 
 export default function App() {
   const [index, setIndex] = useState<Record<string, CharacterIndex>>({});
   const [categories, setCategories] = useState<CategoryCount[]>([]);
-  const [activeName, setActiveName] = useState<string | null>(null);
-  const [activeCat, setActiveCat] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showLibrary, setShowLibrary] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [dataSource, setDataSourceState] = useState<string>(getDataSource());
   const [sources, setSources] = useState<string[]>([]);
+  const { route, navigate } = useHashRoute();
+
+  // ── Derive UI state from the URL hash ───────────────────────────────
+  const activeName = route.view === 'character' ? route.name : null;
+  const activeCat = route.category;
+  const searchQuery = route.query;
+  const showLibrary = route.view === 'library';
+  const showGlobalBatch = route.view === 'batch';
+
+  // Data source: route.ds wins, else localStorage, else default
+  const dataSource = route.dataSource || getDataSource();
+
+  // When the route's ds changes, sync the api client too
+  useEffect(() => {
+    if (route.dataSource) setDataSource(route.dataSource);
+  }, [route.dataSource]);
 
   const loadData = useCallback(async () => {
     try {
@@ -40,25 +53,78 @@ export default function App() {
       .catch(e => console.error('Failed to load data sources:', e));
   }, []);
 
+  // ── Handlers that push into the hash ───────────────────────────────
+  const handleSelect = useCallback((name: string | null) => {
+    if (name) {
+      navigate({ view: 'character', name });
+    } else {
+      navigate({ view: 'home', name: null });
+    }
+  }, [navigate]);
+
+  const handleCategoryChange = useCallback((cat: string | null) => {
+    navigate({ category: cat });
+  }, [navigate]);
+
+  const handleSearchChange = useCallback((q: string) => {
+    navigate({ query: q });
+  }, [navigate]);
+
+  const handleOpenLibrary = useCallback(() => {
+    navigate({ view: 'library' });
+  }, [navigate]);
+
+  const handleCloseLibrary = useCallback(() => {
+    // Return to whatever was showing before (home or the selected character)
+    navigate({ view: activeName ? 'character' : 'home' });
+  }, [navigate, activeName]);
+
+  const handleOpenGlobalBatch = useCallback(() => {
+    navigate({ view: 'batch' });
+  }, [navigate]);
+
+  const handleBackFromBatch = useCallback(() => {
+    navigate({ view: 'home' });
+  }, [navigate]);
+
   const handleDataSourceChange = useCallback((next: string) => {
+    // Reset everything + push ds into hash + re-fetch
     setDataSource(next);
-    setDataSourceState(next);
-    setActiveName(null);
-    setActiveCat(null);
-    setSearchQuery('');
+    navigate({
+      view: 'home',
+      name: null,
+      category: null,
+      query: '',
+      dataSource: next,
+    });
     setLoading(true);
     loadData();
-  }, [loadData]);
+  }, [loadData, navigate]);
 
-  const filteredNames = Object.keys(index)
-    .filter(n => {
-      if (activeCat && index[n]!.category !== activeCat) return false;
-      if (searchQuery && !n.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-      return true;
-    })
-    .sort();
+  const filteredNames = useMemo(
+    () => Object.keys(index)
+      .filter(n => {
+        if (activeCat && index[n]!.category !== activeCat) return false;
+        if (searchQuery && !n.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+        return true;
+      })
+      .sort(),
+    [index, activeCat, searchQuery]
+  );
 
-  const activeChar = activeName ? index[activeName] : null;
+  // Guard: if URL pointed at a character that's no longer in the index, reset to home
+  useEffect(() => {
+    if (route.view === 'character' && route.name) {
+      const loaded = Object.keys(index).length > 0;
+      if (loaded && !index[route.name]) {
+        navigate({ view: 'home', name: null });
+      }
+    }
+  }, [index, route, navigate]);
+
+  const resolvedName = activeName && index[activeName] ? activeName : null;
+
+  const activeChar = resolvedName ? index[resolvedName] : null;
 
   return (
     <div className="app">
@@ -66,22 +132,25 @@ export default function App() {
         names={filteredNames}
         index={index}
         categories={categories}
-        activeName={activeName}
+        activeName={resolvedName}
         activeCat={activeCat}
         searchQuery={searchQuery}
         dataSource={dataSource}
         sources={sources}
         onDataSourceChange={handleDataSourceChange}
-        onSelect={setActiveName}
-        onCategoryChange={setActiveCat}
-        onSearchChange={setSearchQuery}
+        onSelect={handleSelect}
+        onCategoryChange={handleCategoryChange}
+        onSearchChange={handleSearchChange}
         onRefresh={loadData}
-        onOpenLibrary={() => setShowLibrary(true)}
+        onOpenLibrary={handleOpenLibrary}
+        onOpenGlobalBatch={handleOpenGlobalBatch}
       />
       <div className="main">
-        {activeChar && activeName ? (
+        {showGlobalBatch ? (
+          <GlobalBatchView onBack={handleBackFromBatch} onRefresh={loadData} />
+        ) : activeChar && resolvedName ? (
           <CharacterDetail
-            name={activeName}
+            name={resolvedName}
             data={activeChar}
             onRefresh={loadData}
           />
@@ -93,7 +162,7 @@ export default function App() {
         )}
       </div>
       {showLibrary && (
-        <AssetLibrary onClose={() => setShowLibrary(false)} />
+        <AssetLibrary onClose={handleCloseLibrary} />
       )}
     </div>
   );

@@ -137,7 +137,7 @@ export default function ImagePreScreen({ unannotatedCount, folders, onComplete, 
                     setInterruptedBatch(data.interrupted);
                 }
             })
-            .catch(() => {});
+            .catch(() => { });
     }, []);
 
     const handleResume = useCallback(async () => {
@@ -374,7 +374,7 @@ export default function ImagePreScreen({ unannotatedCount, folders, onComplete, 
             .then(data => {
                 if (data?.running && !pollingRef.current) startPolling();
             })
-            .catch(() => {});
+            .catch(() => { });
     }, [state, startPolling]);
 
     const handleStart = useCallback(async () => {
@@ -553,7 +553,7 @@ export default function ImagePreScreen({ unannotatedCount, folders, onComplete, 
                     const statusRes = await fetch("/api/image/prescreen/batch/status");
                     const statusData = await statusRes.json();
                     if (statusData?.interrupted) setInterruptedBatch(statusData.interrupted);
-                } catch {}
+                } catch { }
             }
         } finally {
             abortRef.current = null;

@@ -2,7 +2,7 @@
 
 Uses a YOLO face-detection model (yolov8m-face) for detection. The detected
 face box is expanded by a margin and cropped to a centered square, then resized
-and saved locally. Served via /api/avatar/file/{filename}.
+and uploaded to Supabase Storage.
 """
 import threading
 import uuid
@@ -12,6 +12,8 @@ from pathlib import Path
 import numpy as np
 import requests
 from PIL import Image
+
+from services.supabase_storage import upload_avatar
 
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "logs" / "avatars"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -97,8 +99,8 @@ def _center_crop_fallback(img: Image.Image) -> Image.Image:
     return crop.resize((OUT_SIZE, OUT_SIZE), Image.LANCZOS)
 
 
-def generate_avatar(image_url: str) -> dict:
-    """Detect face, crop centered square, save locally.
+async def generate_avatar(image_url: str) -> dict:
+    """Detect face, crop centered square, upload to Supabase Storage.
 
     Returns {ok, avatar_url, face_found, filename} or {ok: False, error}.
     """
@@ -115,10 +117,30 @@ def generate_avatar(image_url: str) -> dict:
         return {"ok": False, "error": f"detect/crop failed: {e}"}
 
     filename = f"{uuid.uuid4().hex}.png"
+
+    # Save to bytes for upload
+    buf = BytesIO()
+    out.save(buf, format="PNG")
+    img_bytes = buf.getvalue()
+
+    # Also save locally as backup
     out.save(OUTPUT_DIR / filename, format="PNG")
+
+    # Upload to Supabase Storage
+    try:
+        public_url = await upload_avatar(img_bytes, filename)
+    except Exception as e:
+        # Fallback to local URL if upload fails
+        return {
+            "ok": True,
+            "avatar_url": f"/api/avatar/file/{filename}",
+            "face_found": face_found,
+            "filename": filename,
+        }
+
     return {
         "ok": True,
-        "avatar_url": f"/api/avatar/file/{filename}",
+        "avatar_url": public_url,
         "face_found": face_found,
         "filename": filename,
     }

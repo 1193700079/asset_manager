@@ -14,8 +14,16 @@ export default function VideoGrid({ videos, characterName, characterId, onRefres
 
   const handleDelete = async (e: React.MouseEvent, url: string) => {
     e.stopPropagation();
-    if (!confirm('Move video to trash?')) return;
-    await api.softDelete(characterName, url);
+    if (!confirm('Move video to trash? (recoverable)')) return;
+    await api.softDelete(characterName, url, false);
+    onRefresh();
+  };
+
+  const handleHardDelete = async (e: React.MouseEvent, url: string) => {
+    e.stopPropagation();
+    if (!confirm('⚠️ PERMANENTLY DELETE this video AND its OSS file?\nThis cannot be undone.')) return;
+    const r = await api.softDelete(characterName, url, true);
+    if (r.status !== 'ok') alert(`Failed: ${r.mode || 'unknown error'}`);
     onRefresh();
   };
 
@@ -38,6 +46,7 @@ export default function VideoGrid({ videos, characterName, characterId, onRefres
         return (
           <VideoCard key={`${url}-${i}`} url={url} fname={fname} status={status}
             onDelete={(e) => handleDelete(e, url)}
+            onHardDelete={(e) => handleHardDelete(e, url)}
             onStatusToggle={(e) => handleStatusToggle(e, url)}
             statusIcon={statusIcons[status] || '⚪'}
           />
@@ -47,9 +56,10 @@ export default function VideoGrid({ videos, characterName, characterId, onRefres
   );
 }
 
-function VideoCard({ url, fname, status, onDelete, onStatusToggle, statusIcon }: {
+function VideoCard({ url, fname, status, onDelete, onHardDelete, onStatusToggle, statusIcon }: {
   url: string; fname: string; status: string;
   onDelete: (e: React.MouseEvent) => void;
+  onHardDelete: (e: React.MouseEvent) => void;
   onStatusToggle: (e: React.MouseEvent) => void;
   statusIcon: string;
 }) {
@@ -59,7 +69,8 @@ function VideoCard({ url, fname, status, onDelete, onStatusToggle, statusIcon }:
     <div className={`video-card media-status-${status}`}>
       <div className="card-badge">video</div>
       <button className="card-status-btn" onClick={onStatusToggle} title={`状态: ${status}`}>{statusIcon}</button>
-    <button className="card-del" onClick={onDelete}>✕</button>
+    <button className="card-del" onClick={onDelete} title="Move to trash (recoverable)">✕</button>
+    <button className="card-hard-del" onClick={onHardDelete} title="Permanent delete (DB + OSS)">🗑</button>
       <video
         ref={vidRef}
         src={url}
