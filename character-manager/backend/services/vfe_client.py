@@ -43,6 +43,7 @@ async def search_images(
     character_name: str | None = None,
     limit: int = 50,
     offset: int = 0,
+    order: str | None = None,
 ) -> dict:
     client = get_client()
     params: dict = {"limit": limit, "offset": offset}
@@ -52,6 +53,8 @@ async def search_images(
         params["dimension"] = dimension
     if character_name:
         params["character_name"] = character_name
+    if order:
+        params["order"] = order
     resp = await client.get("/api/swapface/search", params=params)
     resp.raise_for_status()
     return resp.json()

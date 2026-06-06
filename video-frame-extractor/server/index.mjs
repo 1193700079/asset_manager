@@ -4426,7 +4426,7 @@ app.post('/api/ai/model', express.json(), (req, res) => {
 // -------- Swapface: Search annotated images by 14-dimension tags ---------------
 app.get('/api/swapface/search', async (req, res) => {
     setCors(res);
-    const { dimension, tag, character_name, limit = 50, offset = 0 } = req.query;
+    const { dimension, tag, character_name, limit = 50, offset = 0, order } = req.query;
 
     try {
         let where = `WHERE format = 'image_annotation'`;
@@ -4449,6 +4449,8 @@ app.get('/api/swapface/search', async (req, res) => {
             pi += 1;
         }
 
+        const orderClause = order === 'random' ? 'ORDER BY random()' : 'ORDER BY created_at DESC';
+
         params.push(Number(limit), Number(offset));
         const query = `
             SELECT video_path, video_name, oss_url, prompt, tags, dimensions,
@@ -4456,7 +4458,7 @@ app.get('/api/swapface/search', async (req, res) => {
                    video_prompt, i2v_prompt
             FROM saved_frames
             ${where}
-            ORDER BY created_at DESC
+            ${orderClause}
             LIMIT $${pi} OFFSET $${pi + 1}
         `;
 

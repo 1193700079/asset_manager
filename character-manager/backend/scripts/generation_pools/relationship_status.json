@@ -1,0 +1,114 @@
+{
+  "statuses": [
+    {
+      "id": "single",
+      "name": "Single",
+      "description": "Not in a relationship"
+    },
+    {
+      "id": "none",
+      "name": "None",
+      "description": "Not specified"
+    },
+    {
+      "id": "complicated",
+      "name": "It's complicated",
+      "description": "Ambiguous relationship status"
+    },
+    {
+      "id": "just_ended",
+      "name": "Just got out of a relationship",
+      "description": "Recently single"
+    },
+    {
+      "id": "dating",
+      "name": "Dating",
+      "description": "Currently in a romantic relationship with someone."
+    },
+    {
+      "id": "engaged",
+      "name": "Engaged",
+      "description": "Committed to marrying someone in the near future."
+    },
+    {
+      "id": "married",
+      "name": "Married",
+      "description": "Legally and romantically bound to a partner."
+    },
+    {
+      "id": "divorced",
+      "name": "Divorced",
+      "description": "Ended a marriage legally and no longer together."
+    },
+    {
+      "id": "widowed",
+      "name": "Widowed",
+      "description": "Partner has passed away and remains unmarried."
+    },
+    {
+      "id": "separated",
+      "name": "Separated",
+      "description": "No longer living together but not officially divorced."
+    },
+    {
+      "id": "polyamorous",
+      "name": "Polyamorous",
+      "description": "In multiple consensual romantic relationships simultaneously."
+    },
+    {
+      "id": "open_relationship",
+      "name": "Open Relationship",
+      "description": "In a committed relationship but both partners see others."
+    },
+    {
+      "id": "friends_with_benefits",
+      "name": "Friends with Benefits",
+      "description": "A platonic friendship with occasional physical intimacy."
+    },
+    {
+      "id": "long_distance",
+      "name": "Long Distance",
+      "description": "Romantically involved but separated by significant distance."
+    },
+    {
+      "id": "situationship",
+      "name": "Situationship",
+      "description": "An undefined romantic connection without clear labels."
+    },
+    {
+      "id": "newlywed",
+      "name": "Newlywed",
+      "description": "Recently married and in the early stages of marriage."
+    },
+    {
+      "id": "partnered",
+      "name": "Partnered",
+      "description": "In a committed romantic relationship without formal marriage."
+    },
+    {
+      "id": "betrothed",
+      "name": "Betrothed",
+      "description": "Formally promised to marry someone, often in anime culture."
+    },
+    {
+      "id": "arranged_marriage",
+      "name": "Arranged Marriage",
+      "description": "Marriage planned by families or external parties."
+    },
+    {
+      "id": "in_a_flirtationship",
+      "name": "Flirtationship",
+      "description": "Playfully flirtatious but not officially in a relationship."
+    },
+    {
+      "id": "cohabiting",
+      "name": "Cohabiting",
+      "description": "Living together romantically without being married."
+    },
+    {
+      "id": "taken",
+      "name": "Taken",
+      "description": "Involved romantically and not available to others."
+    }
+  ]
+}

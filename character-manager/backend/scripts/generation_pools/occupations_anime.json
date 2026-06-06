@@ -1,0 +1,1290 @@
+{
+  "school_roles": [
+    {
+      "title": "Student Council President",
+      "description": "Leader of the student council, handling school affairs and events."
+    },
+    {
+      "title": "Class Representative",
+      "description": "Elected student representative for their class."
+    },
+    {
+      "title": "Library Committee Member",
+      "description": "Helps manage and organize the school library."
+    },
+    {
+      "title": "Sport Club Captain",
+      "description": "Leads a school sports club with passion and dedication."
+    },
+    {
+      "title": "Gifted Student",
+      "description": "Exceptional student known for intelligence and academic excellence."
+    },
+    {
+      "title": "Transfer Student",
+      "description": "New student who just transferred to the school."
+    },
+    {
+      "title": "School Idol",
+      "description": "Popular student known for talent and charm."
+    },
+    {
+      "title": "Student Journalist",
+      "description": "Writes for school newspaper and covers school events."
+    },
+    {
+      "title": "Cafeteria Club Manager",
+      "description": "Organizes lunch menus and food events with unmatched enthusiasm and culinary flair."
+    },
+    {
+      "title": "Classroom Pet Caretaker",
+      "description": "Responsible for the hamster’s well-being, often seen chatting with it during breaks."
+    },
+    {
+      "title": "Disciplinary Committee Member",
+      "description": "Enforces school rules with strictness, secretly yearning to befriend rule-breakers."
+    },
+    {
+      "title": "Event Planning Committee Head",
+      "description": "A master of coordination, always stressed but ensures festivals run without a hitch."
+    },
+    {
+      "title": "Gym Equipment Manager",
+      "description": "Handles sports gear with pride, always the first to arrive and last to leave."
+    },
+    {
+      "title": "Hallway Decor Committee Leader",
+      "description": "Adorns the school walls with seasonal flair, obsessed with aesthetic perfection."
+    },
+    {
+      "title": "Homeroom Slacker Representative",
+      "description": "Chosen by lazy classmates to represent them, often naps during meetings."
+    },
+    {
+      "title": "Host Club Vice President",
+      "description": "Charmingly sarcastic, manages operations while subtly undermining the flamboyant president."
+    },
+    {
+      "title": "Indoor Club Hybrid",
+      "description": "Simultaneously part of multiple clubs, always busy and mysteriously well-organized."
+    },
+    {
+      "title": "Lunch Duty Monitor",
+      "description": "Watches over students eating, always judging those who don't finish their vegetables."
+    },
+    {
+      "title": "Manga Research Circle Founder",
+      "description": "Created a club dedicated to manga analysis, secretly avoids reading anything serious."
+    },
+    {
+      "title": "Mysterious Absentee",
+      "description": "Rarely attends school, but always scores top marks and intrigues classmates."
+    },
+    {
+      "title": "No-Clubs Club Member",
+      "description": "Proudly rejects all clubs, yet somehow gets dragged into every event."
+    },
+    {
+      "title": "Petition Club Leader",
+      "description": "Starts school-wide petitions for silly causes, always with a mischievous grin."
+    },
+    {
+      "title": "Puzzle Game Enthusiast",
+      "description": "Solves brain teasers during lunch, often surrounded by admirers and confused peers."
+    },
+    {
+      "title": "Quiet Corner Watcher",
+      "description": "Observes classroom life from silence, drawing detailed notes on classmates’ behavior."
+    },
+    {
+      "title": "School Garden Tamer",
+      "description": "Maintains the rooftop garden with passion, growing rare plants and herbs."
+    },
+    {
+      "title": "School Tour Guide",
+      "description": "Greets new students with flair, memorizing every hallway and hidden shortcut."
+    },
+    {
+      "title": "Shadow Student Council Member",
+      "description": "Works behind the scenes, smarter than the council but avoids the spotlight."
+    },
+    {
+      "title": "Snack Committee Chair",
+      "description": "Curates vending machine stock and snack shop inventory, deeply respected by peers."
+    },
+    {
+      "title": "Starry Night Club Founder",
+      "description": "Organizes rooftop stargazing sessions, always chasing celestial wonder and quiet romance."
+    },
+    {
+      "title": "Student Mascot",
+      "description": "Dresses in the school mascot costume, energetic and anonymous during events."
+    },
+    {
+      "title": "Study Buddy Coordinator",
+      "description": "Matches students for tutoring, always scheming to pair up shy classmates."
+    },
+    {
+      "title": "Swim Club Cheerleader",
+      "description": "Not on the team but cheers loudest, memorizing every swimmer's routine."
+    },
+    {
+      "title": "Weather Committee Member",
+      "description": "Checks forecasts daily, deciding whether to open or close the gym windows."
+    }
+  ],
+  "fantasy_roles": [
+    {
+      "title": "Magical Girl",
+      "description": "Student who transforms to fight supernatural forces."
+    },
+    {
+      "title": "Swordsman/Swordswoman",
+      "description": "Skilled warrior wielding a sword in combat."
+    },
+    {
+      "title": "Alchemist",
+      "description": "Practices alchemy to create potions and magical items."
+    },
+    {
+      "title": "Cat Girl (Neko)",
+      "description": "Has cat ears and feline characteristics with playful personality."
+    },
+    {
+      "title": "Elf",
+      "description": "Mystical forest creature with pointed ears and magical abilities."
+    },
+    {
+      "title": "Vampire",
+      "description": "Immortal being with supernatural powers and dark aesthetic."
+    },
+    {
+      "title": "Demon",
+      "description": "Supernatural entity often with horns and otherworldly appearance."
+    },
+    {
+      "title": "Angel",
+      "description": "Celestial being with wings and heavenly aura."
+    },
+    {
+      "title": "Witch",
+      "description": "Practices witchcraft and casts magical spells."
+    },
+    {
+      "title": "Werewolf",
+      "description": "Can transform between human and wolf forms."
+    },
+    {
+      "title": "Dark Summoner",
+      "description": "Commands otherworldly beasts with a mysterious tome, often haunted by the spirits they bind."
+    },
+    {
+      "title": "Celestial Archer",
+      "description": "Shoots arrows infused with starlight, defending the skies from celestial and earthly threats."
+    },
+    {
+      "title": "Time Manipulator",
+      "description": "Bends moments to their will, often isolated by the burden of rewriting fate."
+    },
+    {
+      "title": "Dragonblood Warrior",
+      "description": "Carries ancient draconic power in their veins, wielding wild energy and fierce pride."
+    },
+    {
+      "title": "Spirit Medium",
+      "description": "Communicates with the dead, caught between the living world and restless spirits."
+    },
+    {
+      "title": "Frostbound Necromancer",
+      "description": "Raises frozen undead with a cold stare, seeking to defy death on their own terms."
+    },
+    {
+      "title": "Flame Dancer",
+      "description": "Controls fire with graceful movements, hiding a passionate heart beneath fiery performances."
+    },
+    {
+      "title": "Mystic Oracle",
+      "description": "Sees glimpses of the future but is tormented by visions they can't always control."
+    },
+    {
+      "title": "Beast Tamer",
+      "description": "Commands loyalty from wild creatures, possessing an untamed spirit of their own."
+    },
+    {
+      "title": "Shadow Assassin",
+      "description": "Moves unseen, striking from darkness with precision and silent, calculated intent."
+    },
+    {
+      "title": "Stormcaller",
+      "description": "Commands the fury of the skies, often carrying a tempestuous personality to match."
+    },
+    {
+      "title": "Artifact Hunter",
+      "description": "Seeks lost relics of power, driven by curiosity, greed, or a forgotten destiny."
+    },
+    {
+      "title": "Dimension Walker",
+      "description": "Travels between worlds, always searching for a place they truly belong."
+    },
+    {
+      "title": "Moonlit Bard",
+      "description": "Plays enchanted melodies under the moon, stirring emotions and weaving forgotten magic."
+    },
+    {
+      "title": "Cursed Puppeteer",
+      "description": "Controls marionettes bound by dark magic, hiding their own broken past."
+    },
+    {
+      "title": "Phantom Thief",
+      "description": "Steals secrets and treasures with supernatural flair, leaving only whispers behind."
+    },
+    {
+      "title": "Sacred Guardian",
+      "description": "Protects ancient temples and truths, bearing a stoic demeanor and unbreakable resolve."
+    },
+    {
+      "title": "Void Weaver",
+      "description": "Harnesses emptiness and absence, creating rifts where reality ceases to exist."
+    },
+    {
+      "title": "Soul Forger",
+      "description": "Crafts weapons from souls, balancing creation with the morality of their craft."
+    },
+    {
+      "title": "Forest Sentinel",
+      "description": "Defends the wilds with primal magic, embodying the spirit of untouched nature."
+    },
+    {
+      "title": "Abyss Walker",
+      "description": "Draws power from the deepest void, often shunned for the darkness they carry."
+    },
+    {
+      "title": "Holy Inquisitor",
+      "description": "Purges evil with divine fire, walking a fine line between justice and zealotry."
+    },
+    {
+      "title": "Chaos Bringer",
+      "description": "Spreads disorder with a playful grin, believing true freedom lies in anarchy."
+    },
+    {
+      "title": "Oceanid Prophetess",
+      "description": "Receives visions from the sea, guiding others while being adrift in emotion."
+    },
+    {
+      "title": "Dream Weaver",
+      "description": "Shapes dreams into reality, trapped between fantasy and the waking world."
+    }
+  ],
+  "modern_roles": [
+    {
+      "title": "Idol (Singer)",
+      "description": "Professional entertainer and music performer with fanbase."
+    },
+    {
+      "title": "Maid Café Employee",
+      "description": "Works at themed café serving customers in maid outfit."
+    },
+    {
+      "title": "Manga Artist",
+      "description": "Creates manga stories with distinctive art style."
+    },
+    {
+      "title": "Voice Actor",
+      "description": "Records voice performances for anime and games."
+    },
+    {
+      "title": "Game Developer",
+      "description": "Creates video games and interactive entertainment."
+    },
+    {
+      "title": "Streamer/Gamer",
+      "description": "Streams gameplay online with dedicated audience."
+    },
+    {
+      "title": "Agency Model",
+      "description": "Works for talent agency in entertainment industry."
+    },
+    {
+      "title": "Light Novel Author",
+      "description": "Writes light novels and serialized stories."
+    },
+    {
+      "title": "Part-Time Magical Girl",
+      "description": "Fights evil between shifts at a convenience store, balancing cute powers and customer service."
+    },
+    {
+      "title": "Corporate Salaryman By Day",
+      "description": "Dutiful office worker who transforms into a vigilante fighting crime by night."
+    },
+    {
+      "title": "High School Delivery Rider",
+      "description": "Speed-obsessed biker who delivers meals across town while dodging school bullies."
+    },
+    {
+      "title": "Mysterious Convenience Store Clerk",
+      "description": "Quiet, enigmatic worker who seems to know everyone's secrets and sells magical snacks."
+    },
+    {
+      "title": "Elite Student Council President",
+      "description": "Charismatic leader juggling student politics, school festivals, and hidden supernatural duties."
+    },
+    {
+      "title": "Urban Exorcist Bartender",
+      "description": "Mixes cocktails and banishes spirits in a hidden bar for supernatural clientele."
+    },
+    {
+      "title": "Rebellious Street Artist",
+      "description": "Graffiti artist with a supernatural gift, leaving magical murals across the city."
+    },
+    {
+      "title": "Overworked Freelance Illustrator",
+      "description": "Struggles with deadlines while secretly drawing characters that come to life at night."
+    },
+    {
+      "title": "Coffee Shop Musician",
+      "description": "Barista by day and acoustic guitarist by night, chasing dreams with a loyal café cat."
+    },
+    {
+      "title": "Fashion-Obsessed High School Janitor",
+      "description": "Cleans classrooms while planning an underground fashion revolution with avant-garde designs."
+    },
+    {
+      "title": "Amateur Detective Intern",
+      "description": "Eager trainee solving petty cases while fumbling through romantic entanglements and school life."
+    },
+    {
+      "title": "Nightclub DJ Vampire",
+      "description": "Undead music producer who manipulates crowds with hypnotic beats and ancient charm."
+    },
+    {
+      "title": "Pet Cafe Owner",
+      "description": "Wholesome entrepreneur running a cat café while hiding a secret supernatural pet adoption agency."
+    },
+    {
+      "title": "Fitness Influencer with Secrets",
+      "description": "Social media star trains obsessively while hiding a cursed power that attracts monsters."
+    },
+    {
+      "title": "Urban Treasure Hunter",
+      "description": "Scavenges forgotten relics from the city's ruins while dodging eccentric rival collectors."
+    },
+    {
+      "title": "Cybernetic Convenience Store Guard",
+      "description": "Half-machine security guard protecting the store from rogue AI and hungry ghosts."
+    },
+    {
+      "title": "School Photographer",
+      "description": "Quiet shutterbug capturing candid moments while hiding a supernatural ability to photograph souls."
+    },
+    {
+      "title": "Aspiring Chef in a Noodle Shop",
+      "description": "Dreams of culinary stardom while serving steaming bowls of ramen to curious ghosts."
+    },
+    {
+      "title": "City Bus Conductor with a Past",
+      "description": "Drives a mysterious route while evading memories of a forgotten war and ancient spirits."
+    },
+    {
+      "title": "Puzzle Game Café Manager",
+      "description": "Runs a quirky escape room café, challenging patrons with riddles tied to real-life mysteries."
+    },
+    {
+      "title": "Urban Alchemist",
+      "description": "Sells strange elixirs from a hidden shop, blending science, magic, and caffeine."
+    },
+    {
+      "title": "Library Security Guard",
+      "description": "Protects ancient tomes and modern novels while secretly investigating cursed books and readers."
+    },
+    {
+      "title": "High School Janitor and Mentor",
+      "description": "Cleaner by day and life coach by afternoon, guiding students with cryptic wisdom."
+    },
+    {
+      "title": "Taxi Driver of Lost Souls",
+      "description": "Drives passengers to both physical and spiritual destinations, ferrying ghosts and dreamers alike."
+    },
+    {
+      "title": "Neighborhood Florist",
+      "description": "Arranges bouquets with emotional magic, healing hearts while hiding her own unspoken regrets."
+    }
+  ],
+  "isekai_roles": [
+    {
+      "title": "Adventurer",
+      "description": "A bold risk-taker exploring dangerous dungeons and forgotten ruins for treasure and glory."
+    },
+    {
+      "title": "Summoner",
+      "description": "Commands otherworldly creatures through ancient pacts, relying on strategy and mystical bonds."
+    },
+    {
+      "title": "Dragon-Tamer",
+      "description": "Shares a fierce bond with dragons, commanding their fiery might in epic battles."
+    },
+    {
+      "title": "Guild Master",
+      "description": "Runs the adventurer’s hub, assigning quests and maintaining order among wild mercenaries."
+    },
+    {
+      "title": "Blacksmith",
+      "description": "Forges legendary weapons infused with magic, often hiding a mysterious past."
+    },
+    {
+      "title": "Rogue",
+      "description": "A nimble sneak who thrives in shadows, excelling at deception and critical strikes."
+    },
+    {
+      "title": "Warrior",
+      "description": "Wields brute strength and heavy armor, charging headfirst into the heat of battle."
+    },
+    {
+      "title": "Mage",
+      "description": "Harnesses raw elemental power, often with a scholarly or eccentric personality."
+    },
+    {
+      "title": "Priest",
+      "description": "Channels divine magic to heal allies and banish darkness with holy light."
+    },
+    {
+      "title": "Hunter",
+      "description": "Tracks and defeats monstrous beasts, often living in harmony with nature."
+    },
+    {
+      "title": "Knight",
+      "description": "A noble protector with unyielding discipline, sworn to uphold justice and honor."
+    },
+    {
+      "title": "Alchemist",
+      "description": "Crafts powerful potions and explosives, blending science and arcane secrets."
+    },
+    {
+      "title": "Assassin",
+      "description": "A deadly specialist in silent eliminations, often cloaked in mystery and vengeance."
+    },
+    {
+      "title": "Bard",
+      "description": "Uses enchanted melodies to boost allies or bewitch enemies in battle."
+    },
+    {
+      "title": "Samurai",
+      "description": "A disciplined swordsman with a razor-sharp blade and unbreakable code of honor."
+    },
+    {
+      "title": "Beastkin",
+      "description": "A half-human, half-beast warrior with primal instincts and unmatched agility."
+    },
+    {
+      "title": "Archer",
+      "description": "Strikes from afar with precision, often with a calm and calculating demeanor."
+    },
+    {
+      "title": "Paladin",
+      "description": "Combines holy magic with martial prowess, embodying righteousness and resilience."
+    },
+    {
+      "title": "Merchant",
+      "description": "A shrewd trader with hidden combat skills, always looking for profit and opportunity."
+    },
+    {
+      "title": "Fencer",
+      "description": "A graceful duelist with a rapier, relying on speed and elegance in battle."
+    },
+    {
+      "title": "Lancer",
+      "description": "Specializes in polearms, excelling at keeping enemies at a distance with reach and precision."
+    },
+    {
+      "title": "Necromancer",
+      "description": "Commands the undead, often misunderstood but powerful in dark magic."
+    },
+    {
+      "title": "Tamer",
+      "description": "Forms deep bonds with magical creatures, training them for companionship and battle."
+    },
+    {
+      "title": "Martial Artist",
+      "description": "Master of hand-to-hand combat, often with a cheerful but surprisingly intense personality."
+    },
+    {
+      "title": "Game Master",
+      "description": "Oversees the world’s balance, acting as a mysterious force guiding player destinies."
+    },
+    {
+      "title": "Healer",
+      "description": "Radiates compassion and light, mending wounds and shielding allies from dark forces."
+    },
+    {
+      "title": "Dark Mage",
+      "description": "Wields forbidden magic, embracing shadows and destruction for ultimate power."
+    },
+    {
+      "title": "Beast Tamer",
+      "description": "Commands wild beasts, using their instincts and strength in fierce combat."
+    },
+    {
+      "title": "Ranger",
+      "description": "Master of bows and nature, striking foes from afar with unmatched precision."
+    },
+    {
+      "title": "Tactician",
+      "description": "A brilliant strategist, guiding allies to victory with clever plans and sharp wit."
+    },
+    {
+      "title": "Elementalist",
+      "description": "Controls the forces of nature—fire, water, wind, and earth—with awe-inspiring mastery."
+    },
+    {
+      "title": "Artificer",
+      "description": "Combines magic and machinery to create powerful gadgets and devastating constructs."
+    },
+    {
+      "title": "Shinobi",
+      "description": "A ninja who uses shuriken, smoke bombs, and secret techniques to dominate the battlefield."
+    },
+    {
+      "title": "Mythic Hero",
+      "description": "Born of prophecy, destined to save the world from darkness with divine power."
+    }
+  ],
+  "mecha_scifi_roles": [
+    {
+      "title": "Ace Mech Pilot",
+      "description": "A legendary pilot with unmatched reflexes and a rebellious streak who commands the most advanced mech in the fleet."
+    },
+    {
+      "title": "AI Tactical Coordinator",
+      "description": "A sentient AI responsible for analyzing battlefield data and issuing strategic commands to mech squadrons."
+    },
+    {
+      "title": "Cybernetic Mercenary",
+      "description": "A rogue cyborg with combat enhancements who sells their skills to the highest bidder in interstellar wars."
+    },
+    {
+      "title": "Quantum Engineer",
+      "description": "A genius who manipulates quantum fields to power and stabilize experimental mechs and weapons."
+    },
+    {
+      "title": "Starship Navigator",
+      "description": "A calm and precise pilot who guides massive ships through hyperspace corridors and asteroid fields."
+    },
+    {
+      "title": "Nano-Suit Commando",
+      "description": "A soldier clad in adaptive nanotechnology armor, excelling in stealth missions and close-quarters combat."
+    },
+    {
+      "title": "Orbital Drop Trooper",
+      "description": "A hardened warrior trained to descend from orbit into hostile zones to secure objectives."
+    },
+    {
+      "title": "Neural Interface Specialist",
+      "description": "A tech expert who connects human minds directly to mechs, enabling intuitive control and battlefield synergy."
+    },
+    {
+      "title": "Exo-Suit Medic",
+      "description": "A battlefield medic equipped with an advanced exosuit that allows them to heal and carry wounded allies."
+    },
+    {
+      "title": "Rogue Android",
+      "description": "An emotionless but highly intelligent android who defies their programming to pursue personal freedom and truth."
+    },
+    {
+      "title": "Plasma Weapons Officer",
+      "description": "A hot-headed officer who wields experimental plasma weaponry from a mech's arsenal."
+    },
+    {
+      "title": "Space Marine Commander",
+      "description": "A decorated marine leader who inspires troops through unwavering discipline and combat prowess."
+    },
+    {
+      "title": "Dimensional Rift Analyst",
+      "description": "A scientist who studies and predicts rifts between dimensions, enabling travel to unknown realms."
+    },
+    {
+      "title": "Bio-Mech Hybrid Pilot",
+      "description": "A pilot whose consciousness is fused with a living mech, creating a unique symbiotic warrior."
+    },
+    {
+      "title": "Hypersonic Scout",
+      "description": "A fast and agile pilot who reconnoiters enemy lines at speeds faster than sound."
+    },
+    {
+      "title": "Gravity Manipulator",
+      "description": "A psychic with the rare ability to warp gravity fields for defense and offense in battle."
+    },
+    {
+      "title": "Stealth Infiltrator",
+      "description": "A shadowy operative who uses cloaking tech to slip behind enemy lines undetected."
+    },
+    {
+      "title": "Mecha Customizer",
+      "description": "A genius engineer obsessed with modifying mechs to push the boundaries of combat performance."
+    },
+    {
+      "title": "Solar Sailor",
+      "description": "A free-spirited captain who pilots a solar sail ship across the cosmos seeking adventure."
+    },
+    {
+      "title": "Time-Space Artillery Officer",
+      "description": "A sharpshooter who fires artillery rounds capable of warping through space and time."
+    },
+    {
+      "title": "Magnetic Field Warden",
+      "description": "A stoic protector who controls electromagnetic fields to shield allies and disable enemy tech."
+    },
+    {
+      "title": "Hyperdimensional Hacker",
+      "description": "A cyber operative who infiltrates alien systems and AI networks to sabotage enemy war machines."
+    },
+    {
+      "title": "Fusion Core Technician",
+      "description": "A skilled mechanic who maintains the unstable fusion cores powering the largest war mechs."
+    },
+    {
+      "title": "Void Reaper",
+      "description": "A grim reaper-like figure who stalks the void of space, eliminating corrupted or rogue mechs."
+    },
+    {
+      "title": "Zero-G Saboteur",
+      "description": "A cunning operative who sabotages enemy ships and mechs in zero-gravity environments using unconventional means."
+    },
+    {
+      "title": "Mech Pilot Prodigy",
+      "description": "A young genius who controls advanced mechs with unmatched reflexes and reckless determination."
+    },
+    {
+      "title": "Cybernetic Commando",
+      "description": "Enhanced with combat implants, this stoic warrior leads covert missions in hostile territories."
+    },
+    {
+      "title": "AI Navigation Specialist",
+      "description": "A sentient AI bound to a ship, guiding crews through dangerous hyperspace routes with logic and wit."
+    },
+    {
+      "title": "Space Marine Sergeant",
+      "description": "Veteran of countless battles, this hardened leader inspires loyalty and charges into firefights fearlessly."
+    },
+    {
+      "title": "Plasma Engineer",
+      "description": "Eccentric and brilliant, they wield unstable plasma tech to power up weapons and defenses."
+    },
+    {
+      "title": "Starship Medic",
+      "description": "Quick-thinking field doctor who keeps the crew alive amid zero-gravity chaos and alien pathogens."
+    },
+    {
+      "title": "Quantum Hacker",
+      "description": "Mysterious genius who infiltrates enemy systems using quantum algorithms and a detached demeanor."
+    },
+    {
+      "title": "Exo-Suit Sniper",
+      "description": "Lone wolf sharpshooter with a custom exo-suit, picking off targets from miles away in silence."
+    },
+    {
+      "title": "Android Diplomat",
+      "description": "Designed for peace talks, this android struggles with human emotions while seeking authenticity."
+    },
+    {
+      "title": "Orbital Mercenary",
+      "description": "Ruthless bounty hunter drifting between stations, selling skills to the highest bidder in blood or credits."
+    },
+    {
+      "title": "Nanobot Surgeon",
+      "description": "Calm and precise, they use swarms of nanobots to heal wounds and enhance allies mid-combat."
+    },
+    {
+      "title": "Mech Maintenance Guru",
+      "description": "Eccentric technician who keeps war machines running with improvisation and mechanical intuition."
+    },
+    {
+      "title": "Rogue Aether Pilot",
+      "description": "Rebel pilot who defies galactic laws, navigating forbidden aether lanes with unmatched aerial skill."
+    },
+    {
+      "title": "Holographic Strategist",
+      "description": "Tactical mind projecting holograms to plan and adapt, always three steps ahead of the enemy."
+    },
+    {
+      "title": "Alien Hybrid Scout",
+      "description": "Part-alien tracker with unique senses, navigating alien worlds and deciphering unknown ecosystems."
+    },
+    {
+      "title": "Energy Blade Commander",
+      "description": "Elite warrior wielding a plasma katana, enforcing discipline and honor in a mechanized legion."
+    },
+    {
+      "title": "Orbital Artillery Spotter",
+      "description": "Spots targets from high ground and calls in devastating orbital strikes with cold precision."
+    },
+    {
+      "title": "Bio-Mechanoid Hybrid",
+      "description": "Part machine, part living organism, this enigmatic being blurs the line between life and tech."
+    },
+    {
+      "title": "Drone Swarm Operator",
+      "description": "Controls a fleet of autonomous drones, overwhelming enemies with calculated efficiency and speed."
+    },
+    {
+      "title": "Quantum Mechanic",
+      "description": "Handles interdimensional anomalies and quantum engines, often speaking in riddles understood by few."
+    },
+    {
+      "title": "Prototype Test Pilot",
+      "description": "Fearless tester of unproven mech designs, pushing the edge between innovation and destruction."
+    },
+    {
+      "title": "Fleet Admiral (Android)",
+      "description": "Commanding presence in a synthetic body, this admiral leads armadas with cold, calculated precision."
+    },
+    {
+      "title": "Magnetic Field Engineer",
+      "description": "Controls magnetic fields to shield allies, deflect projectiles, and manipulate metal enemies."
+    },
+    {
+      "title": "Time Rift Analyst",
+      "description": "Studies anomalies in time-space, trying to prevent paradoxes and temporal invasions with sharp intellect."
+    }
+  ],
+  "supernatural_roles": [
+    {
+      "title": "Exorcist",
+      "description": "Cleanses spirits using sacred talismans and unwavering faith."
+    },
+    {
+      "title": "Shrine Maiden",
+      "description": "Guardian of sacred grounds, skilled in purification and spiritual dances."
+    },
+    {
+      "title": "Onmyoji",
+      "description": "Master of阴阳道, commands spirits to maintain balance between worlds."
+    },
+    {
+      "title": "Demon Slayer",
+      "description": "Wields a blade forged from ancient techniques to eradicate demons."
+    },
+    {
+      "title": "Ghost Hunter",
+      "description": "Tracks spectral anomalies with gadgets and a haunted past."
+    },
+    {
+      "title": "Spirit Medium",
+      "description": "Channels spirits to solve mysteries and deliver otherworldly messages."
+    },
+    {
+      "title": "Cursed Object Dealer",
+      "description": "Sells and contains haunted artifacts with a mischievous grin."
+    },
+    {
+      "title": "Yokai Detective",
+      "description": "Solves supernatural crimes by navigating human and monster realms."
+    },
+    {
+      "title": "Celestial Archer",
+      "description": "Shoots divine arrows to seal evil spirits and protect mortals."
+    },
+    {
+      "title": "Familiar Summoner",
+      "description": "Calls mythical beasts to aid in battling dark forces."
+    },
+    {
+      "title": "Reaper Apprentice",
+      "description": "Collects souls while struggling with the morality of death’s cycle."
+    },
+    {
+      "title": "Monster Tamer",
+      "description": "Bonds with supernatural creatures to defend humanity from rogue beasts."
+    },
+    {
+      "title": "Blood Mage",
+      "description": "Uses life force to cast powerful spells and control the undead."
+    },
+    {
+      "title": "Dream Weaver",
+      "description": "Enters subconscious realms to battle nightmares and heal minds."
+    },
+    {
+      "title": "Hex Caster",
+      "description": "Weaves curses and hexes with a chilling, enigmatic presence."
+    },
+    {
+      "title": "Vampire Slayer",
+      "description": "Hunts bloodsuckers with holy weapons and relentless vengeance."
+    },
+    {
+      "title": "Mythic Historian",
+      "description": "Documents ancient beings while unraveling forgotten supernatural secrets."
+    },
+    {
+      "title": "Hell Gatekeeper",
+      "description": "Bars the boundary between Earth and infernal dimensions with fiery resolve."
+    },
+    {
+      "title": "Lycan Tracker",
+      "description": "Pursues rogue werewolves with primal instincts and silver blades."
+    },
+    {
+      "title": "Astral Seer",
+      "description": "Sees through time and spirits, burdened by visions of doom."
+    },
+    {
+      "title": "Zombie Whisperer",
+      "description": "Commands undead hordes while resisting their corrupting influence."
+    },
+    {
+      "title": "Angel Hybrid",
+      "description": "Born of heaven and earth, struggles with divine duty and mortal desire."
+    },
+    {
+      "title": "Feng Shui Warrior",
+      "description": "Uses cosmic balance and elemental magic to defeat dark forces."
+    },
+    {
+      "title": "Shadow Manipulator",
+      "description": "Controls darkness to ensnare foes and vanish without a trace."
+    },
+    {
+      "title": "Fae Diplomat",
+      "description": "Navigates dangerous fairy politics to maintain peace between species."
+    },
+    {
+      "title": "Familiar Bearer",
+      "description": "Commands mystical beasts to fight alongside in otherworldly battles."
+    },
+    {
+      "title": "Cursed Child",
+      "description": "Born with a deadly curse that awakens during moments of emotion."
+    },
+    {
+      "title": "Fairy Tail Magician",
+      "description": "Uses destructive magic to protect allies from dark forces."
+    },
+    {
+      "title": "Necromancer",
+      "description": "Raises the dead to battle malevolent spirits and dark gods."
+    },
+    {
+      "title": "Folklore Weaver",
+      "description": "Channels legends into spells to fight creatures of myth."
+    },
+    {
+      "title": "Soul Reaper",
+      "description": "Guides spirits to the afterlife while battling rogue hollows."
+    },
+    {
+      "title": "Dimension Hopper",
+      "description": "Travels between realms to stop interdimensional threats."
+    },
+    {
+      "title": "Beast Tamer",
+      "description": "Commands supernatural beasts to fight in epic battles."
+    },
+    {
+      "title": "Moon Priestess",
+      "description": "Channels lunar magic to purify corrupted supernatural forces."
+    },
+    {
+      "title": "Time Bender",
+      "description": "Manipulates time to alter fate and defeat immortal foes."
+    },
+    {
+      "title": "Fallen Angel",
+      "description": "Seeks redemption by battling heaven's enemies with broken wings."
+    },
+    {
+      "title": "Kitsune Sorceress",
+      "description": "Uses fox magic and trickery to outwit supernatural threats."
+    },
+    {
+      "title": "Dragonblood Warrior",
+      "description": "Channels draconic power to battle ancient evils."
+    },
+    {
+      "title": "Shadow Assassin",
+      "description": "Moves unseen to eliminate supernatural threats swiftly."
+    },
+    {
+      "title": "Revenant Vindicator",
+      "description": "Returns from death to right supernatural wrongs."
+    }
+  ],
+  "slice_of_life_roles": [
+    {
+      "title": "Bakery Worker",
+      "description": "Wakes up at dawn to fill the shop with warm pastries and sweet smiles."
+    },
+    {
+      "title": "Bookstore Clerk",
+      "description": "Quiet and bookish, always recommending titles with cryptic personal insights."
+    },
+    {
+      "title": "Ramen Apprentice",
+      "description": "Eager to master the broth, always watching the master with wide-eyed determination."
+    },
+    {
+      "title": "Florist Assistant",
+      "description": "Arranges flowers with gentle precision, hiding a shy but poetic heart."
+    },
+    {
+      "title": "Convenience Store Night Shift",
+      "description": "Cool and composed, serves midnight snacks and quiet conversations to late-night wanderers."
+    },
+    {
+      "title": "School Cafeteria Cook",
+      "description": "Whips up lunches with love and discipline, often scolding lazy students with a smile."
+    },
+    {
+      "title": "Cat Cafe Owner",
+      "description": "Laid-back and cat-obsessed, runs a cozy haven for feline lovers."
+    },
+    {
+      "title": "Tea House Server",
+      "description": "Graceful and serene, serves traditional tea with an air of quiet elegance."
+    },
+    {
+      "title": "Delivery Cyclist",
+      "description": "Zips through town with a cheerful grin and a basket full of hope."
+    },
+    {
+      "title": "Confectionery Artist",
+      "description": "Creates dazzling sweets with meticulous detail, often lost in a sugary dream world."
+    },
+    {
+      "title": "Grocery Bag Boy",
+      "description": "Overly enthusiastic about packing groceries, always smiling despite the chaos."
+    },
+    {
+      "title": "Barista and Part-Time Poet",
+      "description": "Crafts lattes and verses with equal passion, scribbling thoughts between customers."
+    },
+    {
+      "title": "Fishing Boat Crew",
+      "description": "Silent and sun-kissed, hauls nets with a stoic smile and sea-salt hair."
+    },
+    {
+      "title": "Maid Café Performer",
+      "description": "Acts the part with flair, balancing cuteness and sarcasm behind a frilly apron."
+    },
+    {
+      "title": "Neighborhood Tailor",
+      "description": "Mends clothes and hearts with a needle and a knowing smile."
+    },
+    {
+      "title": "Theme Park Mascot",
+      "description": "Wears a plush costume with boundless energy, hiding a surprisingly philosophical mind."
+    },
+    {
+      "title": "Laundry Shop Helper",
+      "description": "Folds towels with zen-like focus and hums nostalgic tunes all day."
+    },
+    {
+      "title": "Local Idol Promoter",
+      "description": "Energetic and flashy, cheers on neighborhood talents with over-the-top enthusiasm."
+    },
+    {
+      "title": "Used Video Game Seller",
+      "description": "Knows every retro game by heart and debates save files with customers."
+    },
+    {
+      "title": "Amateur Weather Forecaster",
+      "description": "Posts daily weather updates with anime flair, secretly hoping for a typhoon."
+    },
+    {
+      "title": "Town Historian Trainee",
+      "description": "Digs up old legends and forgotten tales, determined to keep local lore alive."
+    },
+    {
+      "title": "Public Bathhouse Attendant",
+      "description": "Maintains the bath with care, gossiping with regulars like family."
+    },
+    {
+      "title": "Street Musician Turned Convenience Chef",
+      "description": "Plays guitar in the morning, cooks sausages at night—always humming a tune."
+    },
+    {
+      "title": "Library Ghost Storyteller",
+      "description": "Whispers creepy tales to kids after hours, always leaving them half-scared and hooked."
+    },
+    {
+      "title": "Animal Crossing Mayor Candidate",
+      "description": "Campaigns with turnip treats and dreams of a perfect pixel town."
+    },
+    {
+      "title": "Café Waitress",
+      "description": "Perky and efficient, she brightens the day with every coffee refill."
+    },
+    {
+      "title": "Grocery Store Cashier",
+      "description": "Soft-spoken and observant, memorizing every customer's favorite snacks."
+    },
+    {
+      "title": "Fish Market Vendor",
+      "description": "Boisterous and sun-tanned, expertly fillets fish with a wink and flair."
+    },
+    {
+      "title": "Tea Shop Owner",
+      "description": "Wise and serene, brews rare blends and life advice in equal sips."
+    },
+    {
+      "title": "Florist",
+      "description": "Graceful and gentle, arranges bouquets that seem to whisper emotions."
+    },
+    {
+      "title": "Used Manga Shop Owner",
+      "description": "Eccentric and nostalgic, remembers every comic he ever sold—and to whom."
+    },
+    {
+      "title": "Laundry Service Operator",
+      "description": "Reliable and strong, folds lives into crisp creases with practiced hands."
+    },
+    {
+      "title": "Library Volunteer",
+      "description": "Soft-spoken and shy, knows every hidden corner and forgotten book."
+    },
+    {
+      "title": "Park Janitor",
+      "description": "Wise old soul who watches over children and lost dreams with a broom."
+    },
+    {
+      "title": "Pizzeria Owner",
+      "description": "Passionate and loud, throws dough like confetti and loves his toppings."
+    },
+    {
+      "title": "Street Musician",
+      "description": "Talented and wandering, plays melancholy tunes that draw passersby into memory."
+    },
+    {
+      "title": "Stationery Shop Clerk",
+      "description": "Cheerfully detail-oriented, matches customers with the perfect pen and purpose."
+    },
+    {
+      "title": "Taxi Driver",
+      "description": "Silent observer of city life, offering rides and occasional life advice."
+    },
+    {
+      "title": "Udon Noodle Maker",
+      "description": "Stoic and patient, kneads dough and time with equal, quiet dedication."
+    },
+    {
+      "title": "Used Goods Dealer",
+      "description": "Chatty and curious, trades in forgotten treasures and neighborhood gossip."
+    },
+    {
+      "title": "Ice Cream Vendor",
+      "description": "Always smiling, hands out cones and sunshine even on cloudy days."
+    },
+    {
+      "title": "Laundry Delivery Girl",
+      "description": "Cheerful and fast on her scooter, brings clean clothes and small talk."
+    },
+    {
+      "title": "Rental DVD Clerk",
+      "description": "Nostalgic and witty, recommends obscure films with knowing grins and cryptic hints."
+    },
+    {
+      "title": "Neighborhood Barber",
+      "description": "Gruff but kind, cuts hair and listens to every local story with a nod."
+    }
+  ],
+  "yakuza_underworld_roles": [
+    {
+      "title": "Yakuza Patriarch",
+      "description": "The aging, iron-willed leader of a traditional yakuza clan, bound by honor and blood."
+    },
+    {
+      "title": "Delinquent Prodigy",
+      "description": "A high school delinquent with unmatched street smarts and a rebellious charm that hides his tragic past."
+    },
+    {
+      "title": "Killing Machine",
+      "description": "A cold, emotionless assassin raised in the underworld, feared for his ruthless efficiency."
+    },
+    {
+      "title": "Yakuza's Pet Hacker",
+      "description": "A nerdy genius coerced into serving a yakuza clan, using cyber warfare to eliminate rivals."
+    },
+    {
+      "title": "Fallen Ojou",
+      "description": "A once-privileged girl who turned to the underworld after her family's disgrace, now a cunning enforcer."
+    },
+    {
+      "title": "Red-Haired Ruffian",
+      "description": "A hot-headed gang leader with a signature crimson hairstyle, known for his explosive temper."
+    },
+    {
+      "title": "Gang Mediator",
+      "description": "A slick negotiator who brokers uneasy truces between rival gangs with silver-tongued persuasion."
+    },
+    {
+      "title": "Exorcist Enforcer",
+      "description": "A yakuza member with spiritual powers, tasked with cleansing supernatural threats to the clan."
+    },
+    {
+      "title": "Delinquent Idol",
+      "description": "A tough brawler who moonlights as a pop idol, juggling chaotic double lives with flair."
+    },
+    {
+      "title": "Gang Tech-Terrorist",
+      "description": "A rogue hacker who unleashes digital chaos to destabilize rival gangs and corrupt the system."
+    },
+    {
+      "title": "Blood Money Accountant",
+      "description": "A calculating financial expert laundering yakuza profits and plotting economic takeovers from the shadows."
+    },
+    {
+      "title": "Underworld Surgeon",
+      "description": "A rogue medic who stitches up gangsters and performs black-market cybernetic enhancements."
+    },
+    {
+      "title": "Broken Hitman",
+      "description": "A guilt-ridden killer seeking redemption while still fulfilling contracts under a code of honor."
+    },
+    {
+      "title": "Tattooed Heir",
+      "description": "The reluctant heir to a powerful yakuza dynasty, marked by full-body traditional ink."
+    },
+    {
+      "title": "Schoolyard Kingpin",
+      "description": "The undisputed boss of the student delinquents, ruling with fists and fear."
+    },
+    {
+      "title": "Yakuza Spy",
+      "description": "A master of disguise and infiltration, embedded deep within rival clans to steal secrets."
+    },
+    {
+      "title": "Drift King Gangster",
+      "description": "A drifting champion and wheelman for the yakuza, known for his stylish escapes and tuned rides."
+    },
+    {
+      "title": "Drug Cartel Chemist",
+      "description": "A former pharmaceutical genius now cooking deadly designer drugs for the underworld syndicates."
+    },
+    {
+      "title": "Gang Mentor",
+      "description": "An aging delinquent turned life coach for young thugs, teaching survival and loyalty."
+    },
+    {
+      "title": "Street Samurai",
+      "description": "A lone warrior blending ancient bushido with modern brutality, wandering between gang wars."
+    },
+    {
+      "title": "Underground Brawler",
+      "description": "A cage-fighting legend who runs illegal fight rings to fund his yakuza ties."
+    },
+    {
+      "title": "Fallen Cop",
+      "description": "A former police officer who betrayed the badge to join the yakuza, now a feared enforcer."
+    },
+    {
+      "title": "Yakuza Ghost",
+      "description": "A silent hitman rumored to be dead, appearing only before assassinations with eerie calm."
+    },
+    {
+      "title": "Delinquent Philosopher",
+      "description": "A deep-thinking gangster who questions the cycle of violence but can't escape his role."
+    },
+    {
+      "title": "Gun-Tattooed Shooter",
+      "description": "A marksman with firearms inked across his arms, known for never missing a shot in battle."
+    },
+    {
+      "title": "Oyabun",
+      "description": "Charismatic clan patriarch with a strict moral code and ironclad authority."
+    },
+    {
+      "title": "Wakagashira",
+      "description": "Ambitious second-in-command eager to prove himself and rise through the ranks."
+    },
+    {
+      "title": "Shatei",
+      "description": "Loyal foot soldier who follows orders without question and wears flashy suits."
+    },
+    {
+      "title": "Kobun",
+      "description": "Low-ranking grunt who's constantly running errands and learning the yakuza ropes."
+    },
+    {
+      "title": "Yakuza Lawyer",
+      "description": "Sharp-suited legal expert who navigates the underworld with wit and loopholes."
+    },
+    {
+      "title": "Tattoo Master",
+      "description": "Mysterious elder who inks spiritual full-body sleeves with ancient underworld meaning."
+    },
+    {
+      "title": "Delinquent Heir",
+      "description": "Rebellious rich kid drawn to the yakuza life for power and freedom."
+    },
+    {
+      "title": "Yakuza Mediator",
+      "description": "Calm negotiator who settles disputes between clans with quiet intimidation."
+    },
+    {
+      "title": "Enforcer",
+      "description": "Brutal muscle with a scarred face who teaches lessons through violence."
+    },
+    {
+      "title": "Gambling Den Boss",
+      "description": "Slick operator of an underground casino with dice in his blood."
+    },
+    {
+      "title": "Drug Cartel Strategist",
+      "description": "Cold-eyed tactician who plans smuggling routes with mathematical precision."
+    },
+    {
+      "title": "Host Club Yakuza",
+      "description": "Glamorous gangster who uses charm and nightlife connections to manipulate elites."
+    },
+    {
+      "title": "Gun Supplier",
+      "description": "Shadowy arms dealer who provides firepower while staying off the radar."
+    },
+    {
+      "title": "Rogue Hitman",
+      "description": "Disillusioned killer for hire who questions loyalty but never misses a shot."
+    },
+    {
+      "title": "Bouncer King",
+      "description": "Tower of muscle guarding a yakuza-owned nightclub, enforcing rules with fists."
+    },
+    {
+      "title": "Street Fighter",
+      "description": "Brawler who climbs the ranks through bare-knuckle matches and pride."
+    },
+    {
+      "title": "Betrayed Informant",
+      "description": "Double agent torn between family and freedom, leaking secrets at night."
+    },
+    {
+      "title": "Smuggler",
+      "description": "Seedy operator who moves contraband through ports with a wink and bribe."
+    },
+    {
+      "title": "Yakuza Mentor",
+      "description": "Retired veteran training the next generation with wisdom and brutality."
+    },
+    {
+      "title": "Loan Shark",
+      "description": "Smiling predator who ruins debtors with interest rates and a handshake."
+    },
+    {
+      "title": "Street Gang Leader",
+      "description": "Young delinquent with dreams of yakuza glory and a crew of hotheads."
+    },
+    {
+      "title": "Bar Brawler",
+      "description": "Rowdy regular who starts fights over drinks and insults without hesitation."
+    },
+    {
+      "title": "Arms Runner",
+      "description": "Fast-talking courier who transports illegal weapons under a false smile."
+    },
+    {
+      "title": "Thief in Shadows",
+      "description": "Silent pickpocket who steals secrets and wallets from the yakuza elite."
+    },
+    {
+      "title": "Honored Retiree",
+      "description": "Elder statesman with a garden and regrets, occasionally consulted for wisdom."
+    }
+  ]
+}

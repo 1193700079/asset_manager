@@ -13998,5 +13998,37 @@
     "videoPath": "",
     "createdAt": "2026-06-06T08:32:08.191Z",
     "status": "pending"
+  },
+  {
+    "id": "bb6b43fd-c60a-413c-9ea8-42766a23fa42",
+    "tag": "不可见面部 | face not visible",
+    "dimension": "07-表情眼神.md",
+    "videoPath": "",
+    "createdAt": "2026-06-06T09:13:00.222Z",
+    "status": "pending"
+  },
+  {
+    "id": "043b5014-4bc7-4634-9c45-a7658c2d398d",
+    "tag": "背对镜头 | facing away",
+    "dimension": "07-表情眼神.md",
+    "videoPath": "",
+    "createdAt": "2026-06-06T09:13:00.222Z",
+    "status": "pending"
+  },
+  {
+    "id": "05e62c99-b065-490c-b4db-dbff127abff2",
+    "tag": "无明显妆容 | no visible makeup",
+    "dimension": "09-妆容专项.md",
+    "videoPath": "",
+    "createdAt": "2026-06-06T09:13:00.222Z",
+    "status": "pending"
+  },
+  {
+    "id": "58eb9efa-8dd1-43f2-a09b-65bd42b00dd5",
+    "tag": "男性无上衣|male shirtless",
+    "dimension": "04-服装专项.md",
+    "videoPath": "",
+    "createdAt": "2026-06-06T09:31:29.718Z",
+    "status": "pending"
   }
 ]

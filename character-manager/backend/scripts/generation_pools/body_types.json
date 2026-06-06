@@ -1,0 +1,234 @@
+{
+  "types": [
+    {
+      "id": "slim",
+      "name": "Slim",
+      "description": "Thin and lean physique"
+    },
+    {
+      "id": "athletic",
+      "name": "Athletic",
+      "description": "Fit and toned body with visible muscle"
+    },
+    {
+      "id": "curvy",
+      "name": "Curvy",
+      "description": "Rounded feminine or masculine shape"
+    },
+    {
+      "id": "petite",
+      "name": "Petite",
+      "description": "Small and delicate build"
+    },
+    {
+      "id": "average",
+      "name": "Average",
+      "description": "Normal, proportionate build"
+    },
+    {
+      "id": "muscular",
+      "name": "Muscular",
+      "description": "Well-developed muscle definition"
+    },
+    {
+      "id": "tall",
+      "name": "Tall",
+      "description": "Above average height"
+    },
+    {
+      "id": "fit",
+      "name": "Fit",
+      "description": "Healthy and well-maintained physique"
+    },
+    {
+      "id": "willowy_frame",
+      "name": "Willowy Frame",
+      "description": "Tall and elegant with long limbs and a graceful posture, appearing naturally slender and poised."
+    },
+    {
+      "id": "compact_power",
+      "name": "Compact Power",
+      "description": "Shorter in stature with dense muscle and sturdy bones, radiating strength in a small package."
+    },
+    {
+      "id": "balanced_athletic",
+      "name": "Balanced Athletic",
+      "description": "Well-proportioned musculature throughout with moderate definition and a strong core presence."
+    },
+    {
+      "id": "elongated_lean",
+      "name": "Elongated Lean",
+      "description": "Very tall with a narrow frame and minimal fat, giving a stretched and angular silhouette."
+    },
+    {
+      "id": "rounded_contours",
+      "name": "Rounded Contours",
+      "description": "Soft curves dominate with full hips and bust, evenly balanced with a gentle midsection."
+    },
+    {
+      "id": "broad_structure",
+      "name": "Broad Structure",
+      "description": "Wide shoulders and chest tapering to narrow hips, creating a strong upper-body dominance."
+    },
+    {
+      "id": "delicate_build",
+      "name": "Delicate Build",
+      "description": "Fine-boned and light with narrow shoulders and hips, giving an overall fragile impression."
+    },
+    {
+      "id": "cylindrical_shape",
+      "name": "Cylindrical Shape",
+      "description": "Minimal waist definition with relatively even proportions from shoulders to hips."
+    },
+    {
+      "id": "tapered_strength",
+      "name": "Tapered Strength",
+      "description": "Muscular legs and hips with a narrower upper body, suggesting agility and grounded power."
+    },
+    {
+      "id": "soft_rectangular",
+      "name": "Soft Rectangular",
+      "description": "Mildly angular with slightly broader shoulders and minimal waist curve, appearing structured."
+    },
+    {
+      "id": "tall_slender",
+      "name": "Tall Slender",
+      "description": "Above-average height with a narrow frame and little body fat, projecting a refined silhouette."
+    },
+    {
+      "id": "wide_set_frame",
+      "name": "Wide-Set Frame",
+      "description": "Broad hips and shoulders with a short torso, offering a grounded and solid appearance."
+    },
+    {
+      "id": "tapered_muscle",
+      "name": "Tapered Muscle",
+      "description": "Defined musculature in the arms and chest with a narrow waist and lighter lower body."
+    },
+    {
+      "id": "cushioned_form",
+      "name": "Cushioned Form",
+      "description": "Soft, rounded physique with even fat distribution and a warm, approachable presence."
+    },
+    {
+      "id": "angular_lean",
+      "name": "Angular Lean",
+      "description": "Sharp angles at the shoulders and hips with minimal softness, appearing wiry and energetic."
+    },
+    {
+      "id": "low_centered",
+      "name": "Low-Centered",
+      "description": "Broader hips and thighs with a shorter upper body, giving a grounded and stable impression."
+    },
+    {
+      "id": "columnar_build",
+      "name": "Columnar Build",
+      "description": "Very straight up and down with little curve or taper, appearing uniform from chest to hips."
+    },
+    {
+      "id": "sleek_power",
+      "name": "Sleek Power",
+      "description": "Toned musculature with clean lines and balanced proportions, exuding controlled strength."
+    },
+    {
+      "id": "tapered_softness",
+      "name": "Tapered Softness",
+      "description": "Narrow shoulders with gradually widening hips, creating a gentle, flowing silhouette."
+    },
+    {
+      "id": "dense_stature",
+      "name": "Dense Stature",
+      "description": "Stocky and solid with thick limbs and a short neck, built for endurance and resilience."
+    },
+    {
+      "id": "compact_powerhouse",
+      "name": "Compact Powerhouse",
+      "description": "Stocky and strong with dense muscle mass, built for power rather than height."
+    },
+    {
+      "id": "delicate_boned",
+      "name": "Delicate-Boned",
+      "description": "Light frame with narrow shoulders and hips, appearing fragile and subtly structured."
+    },
+    {
+      "id": "toned_athleticism",
+      "name": "Toned Athleticism",
+      "description": "Balanced musculature with defined curves and moderate muscle tone, suggesting active fitness."
+    },
+    {
+      "id": "voluptuous_roundness",
+      "name": "Voluptuous Roundness",
+      "description": "Full-figured with soft curves concentrated in the bust and hips, exuding warmth and presence."
+    },
+    {
+      "id": "rangy_stature",
+      "name": "Rangy Stature",
+      "description": "Lanky and tall with uneven proportions, often appearing loosely put together."
+    },
+    {
+      "id": "svelte_taper",
+      "name": "Svelte Taper",
+      "description": "Narrow waist with gradually widening hips and shoulders, creating a streamlined silhouette."
+    },
+    {
+      "id": "broad_frame",
+      "name": "Broad Frame",
+      "description": "Wide shoulders and hips with a sturdy build, projecting strength and presence."
+    },
+    {
+      "id": "slender_column",
+      "name": "Slender Column",
+      "description": "Even proportions with minimal curves, appearing upright and uniformly structured."
+    },
+    {
+      "id": "gracefully_proportioned",
+      "name": "Gracefully Proportioned",
+      "description": "Harmonious curves with balanced waist-to-hip and shoulder-to-waist ratios, classically elegant."
+    },
+    {
+      "id": "lithe_form",
+      "name": "Lithe Form",
+      "description": "Lean and flexible build with subtle musculature, ideal for agility and motion."
+    },
+    {
+      "id": "sturdy_base",
+      "name": "Sturdy Base",
+      "description": "Broad lower body with a strong foundation, tapering slightly toward the upper torso."
+    },
+    {
+      "id": "elongated_slim",
+      "name": "Elongated Slim",
+      "description": "Tall and narrow with minimal fat or muscle, appearing stretched and linear."
+    },
+    {
+      "id": "muscular_girth",
+      "name": "Muscular Girth",
+      "description": "Thickset and heavily muscled with pronounced bulk, suggesting physical dominance."
+    },
+    {
+      "id": "rounded_midsection",
+      "name": "Rounded Midsection",
+      "description": "Centralized fullness around the torso with slimmer limbs, creating a grounded silhouette."
+    },
+    {
+      "id": "tapered_length",
+      "name": "Tapered Length",
+      "description": "Tall and narrow at the top with gradually widening proportions toward the hips."
+    },
+    {
+      "id": "balanced_trapezoid",
+      "name": "Balanced Trapezoid",
+      "description": "Broader shoulders tapering to narrower hips, forming a structured and masculine silhouette."
+    },
+    {
+      "id": "rounded_comfort",
+      "name": "Rounded Comfort",
+      "description": "Soft, evenly distributed curves throughout the body, conveying approachability and ease."
+    },
+    {
+      "id": "angular_leanness",
+      "name": "Angular Leanness",
+      "description": "Sharp angles and minimal softness, with low body fat and defined skeletal structure."
+    }
+  ]
+}

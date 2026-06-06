@@ -101,7 +101,8 @@ class BatchGenerateRequest(BaseModel):
     height: int = 1536
     seed: int = 0
     edit_prompt: str | None = None
-    engine: str = "smartstudio"  # smartstudio | comfyui
+    engine: str = "smartstudio"  # smartstudio | comfyui | dashscope
+    overwrite: bool = False
 
 
 # ---------- Endpoints ----------
@@ -660,6 +661,7 @@ async def batch_generate_start(data: BatchGenerateRequest):
         ds, data.type, per_character=data.per_character, category=data.category,
         width=data.width, height=data.height, seed=data.seed,
         edit_prompt=data.edit_prompt, engine=data.engine,
+        overwrite=data.overwrite,
     )
 
 
@@ -697,3 +699,33 @@ async def batch_generate_resume(job_id: str | None = None):
 async def batch_generate_list_jobs():
     """List all known batch jobs (in-memory + persisted) for the UI."""
     return {"status": "ok", "jobs": batch_processing.list_jobs()}
+
+
+@router.post("/comfyui/free-vram")
+async def comfyui_free_vram():
+    """Send /free to all ComfyUI instances to unload models and release VRAM."""
+    import aiohttp
+    from services.comfyui_single import COMFYUI_HOST, COMFYUI_PORTS
+
+    freed = 0
+    errors = []
+    async with aiohttp.ClientSession() as session:
+        for port in COMFYUI_PORTS:
+            try:
+                async with session.post(
+                    f"http://{COMFYUI_HOST}:{port}/free",
+                    json={"unload_models": True, "free_memory": True},
+                    timeout=aiohttp.ClientTimeout(total=10),
+                ) as resp:
+                    if resp.status == 200:
+                        freed += 1
+                    else:
+                        errors.append(f"{port}: HTTP {resp.status}")
+            except Exception as e:
+                errors.append(f"{port}: {type(e).__name__}")
+    return {
+        "status": "ok",
+        "freed": freed,
+        "total": len(COMFYUI_PORTS),
+        "errors": errors[:10] if errors else None,
+    }

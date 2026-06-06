@@ -76,11 +76,11 @@ export interface TagCloud {
 
 export interface BatchJob {
   job_id: string;
-  type: 'anime' | 'anime_direct' | 'faceswap' | 'zimage' | 'imageedit' | 'video' | 'avatar';
+  type: 'anime' | 'anime_direct' | 'faceswap' | 'zimage' | 'imageedit' | 'video' | 'profile_video' | 'avatar';
   data_source: string;
   per_character: number;
   category: string | null;
-  engine?: 'smartstudio' | 'comfyui';
+  engine?: 'smartstudio' | 'comfyui' | 'dashscope';
   status: 'starting' | 'building' | 'running' | 'stopping' | 'stopped' | 'completed' | 'error' | 'interrupted';
   total: number;
   processed: number;

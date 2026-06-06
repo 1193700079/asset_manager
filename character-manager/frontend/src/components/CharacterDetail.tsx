@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { CharacterIndex } from '../types';
 import { api } from '../api/client';
 import MediaGrid from './MediaGrid';
@@ -16,16 +16,72 @@ interface Props {
   confirmEnabled: boolean;
 }
 
+interface AudioCandidate {
+  id: number;
+  filename: string;
+  category: string;
+  duration: number;
+  oss_url: string;
+  status: string;
+}
+
 export default function CharacterDetail({ name, data, onRefresh, confirmEnabled }: Props) {
   const [modalUrl, setModalUrl] = useState<string | null>(null);
   const [showTrash, setShowTrash] = useState(false);
   const [showGen, setShowGen] = useState(false);
   const [voiceUrl, setVoiceUrl] = useState(data.voice_id || '');
   const [savingVoice, setSavingVoice] = useState(false);
+  const [audioCandidates, setAudioCandidates] = useState<AudioCandidate[]>([]);
+  const [loadingAudio, setLoadingAudio] = useState(false);
+  const [showManualVoice, setShowManualVoice] = useState(false);
 
   useEffect(() => {
     setVoiceUrl(data.voice_id || '');
   }, [data.id, data.voice_id]);
+
+  const loadCandidates = useCallback(async () => {
+    setLoadingAudio(true);
+    try {
+      const r = await api.audioCandidates(data.id);
+      setAudioCandidates(r.items || []);
+    } catch { /* ignore */ }
+    finally { setLoadingAudio(false); }
+  }, [data.id]);
+
+  useEffect(() => { loadCandidates(); }, [loadCandidates]);
+
+  const handleConfirmAudio = async (audioId: number) => {
+    try {
+      const r = await api.audioConfirm(audioId, data.id);
+      if (r.status === 'ok') {
+        onRefresh();
+        loadCandidates();
+      } else {
+        alert(r.message || '确认失败');
+      }
+    } catch (e: any) {
+      alert('确认失败: ' + e.message);
+    }
+  };
+
+  const handleRejectAudio = async (audioId: number) => {
+    try {
+      await api.audioReject(audioId);
+      setAudioCandidates(prev => prev.filter(a => a.id !== audioId));
+    } catch (e: any) {
+      alert('拒绝失败: ' + e.message);
+    }
+  };
+
+  const handleRefreshCandidates = async () => {
+    setLoadingAudio(true);
+    try {
+      await api.audioRefreshCandidates(data.id);
+      await loadCandidates();
+    } catch (e: any) {
+      alert('刷新失败: ' + e.message);
+    } finally { setLoadingAudio(false); }
+  };
 
   const attrs = Object.entries(data.attributes || {})
     .filter(([, v]) => v)
@@ -80,17 +136,46 @@ export default function CharacterDetail({ name, data, onRefresh, confirmEnabled 
             </div>
             <div className="char-voice">
               <label>默认音频</label>
-              <input
-                type="text"
-                placeholder="音频文件 URL（留空清除）"
-                value={voiceUrl}
-                onChange={e => setVoiceUrl(e.target.value)}
-              />
-              <button onClick={handleSaveVoice} disabled={savingVoice}>
-                {savingVoice ? '保存中…' : '保存'}
-              </button>
-              {voiceUrl.trim() && (
-                <audio src={voiceUrl.trim()} controls preload="none" />
+              {voiceUrl.trim() && voiceUrl.startsWith('http') && (
+                <div className="char-voice-current">
+                  <audio src={voiceUrl.trim()} controls preload="none" />
+                  <span className="vc-status-tag online">已上线</span>
+                </div>
+              )}
+              {audioCandidates.filter(a => a.status === 'pending').length > 0 && (
+                <div className="char-voice-candidates">
+                  <div className="vc-section-label">待审核候选 ({audioCandidates.filter(a => a.status === 'pending').length})</div>
+                  {audioCandidates.filter(a => a.status === 'pending').map(a => (
+                    <div key={a.id} className="voice-candidate">
+                      <span className="vc-cat">[{a.category}]</span>
+                      <span className="vc-name" title={a.filename}>{a.filename.slice(0, 30)}</span>
+                      <audio src={a.oss_url} controls preload="none" />
+                      <button onClick={() => handleConfirmAudio(a.id)} className="vc-select-btn">上线</button>
+                      <button onClick={() => handleRejectAudio(a.id)} className="vc-reject-btn">拒绝</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="char-voice-picker">
+                <button onClick={handleRefreshCandidates} disabled={loadingAudio} className="voice-pick-btn">
+                  {loadingAudio ? '加载中…' : '换一批'}
+                </button>
+                <button onClick={() => setShowManualVoice(!showManualVoice)} className="voice-manual-toggle">
+                  {showManualVoice ? '收起手动输入' : '手动输入URL'}
+                </button>
+              </div>
+              {showManualVoice && (
+                <div className="char-voice-manual">
+                  <input
+                    type="text"
+                    placeholder="音频文件 URL（留空清除）"
+                    value={voiceUrl}
+                    onChange={e => setVoiceUrl(e.target.value)}
+                  />
+                  <button onClick={handleSaveVoice} disabled={savingVoice}>
+                    {savingVoice ? '保存中…' : '保存'}
+                  </button>
+                </div>
               )}
             </div>
           </div>

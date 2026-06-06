@@ -8,7 +8,7 @@ interface Props {
   onRefresh?: () => void;
 }
 
-type BatchType = 'anime' | 'anime_direct' | 'faceswap' | 'zimage' | 'imageedit' | 'video' | 'avatar';
+type BatchType = 'anime' | 'anime_direct' | 'faceswap' | 'zimage' | 'imageedit' | 'video' | 'profile_video' | 'avatar';
 
 const BATCH_TYPES: { key: BatchType; label: string; desc: string }[] = [
   { key: 'anime', label: '动漫角色生成 (ZImage→Edit)', desc: '先文生图写实，再用 Edit 转动漫风（两步，质量高但慢）' },
@@ -17,6 +17,7 @@ const BATCH_TYPES: { key: BatchType; label: string; desc: string }[] = [
   { key: 'imageedit', label: '批量图片编辑 (Edit)', desc: '每角色随机抽 N 个 prompt，base=角色头像 → 编辑 → 待选' },
   { key: 'faceswap', label: '批量换脸 (FaceSwap)', desc: 'face=角色头像；body 来自换脸素材(直接换)与 zimage 生图(生成后换)，注明来源' },
   { key: 'video', label: '批量视频生成 (Wan)', desc: '用已生成的换脸图/编辑图作首帧 + 素材库 video_prompt 合成视频，注明首帧来源' },
+  { key: 'profile_video', label: '人物展示视频 (Profile→Video)', desc: '用角色首张 profile 图作首帧生成展示视频，每角色 N 个不同动作' },
   { key: 'avatar', label: '批量头像生成 (YOLO人脸)', desc: '给没有头像的角色用首图做人脸检测+居中裁剪生成头像；已有头像的跳过' },
 ];
 
@@ -28,7 +29,8 @@ export default function GlobalBatchView({ onBack, onRefresh }: Props) {
   const [category, setCategory] = useState<string[]>([]);
   const [editPrompt, setEditPrompt] = useState('');
   const [presets, setPresets] = useState<{ id: string; label: string; prompt: string }[]>([]);
-  const [engine, setEngine] = useState<'smartstudio' | 'comfyui'>('comfyui');
+  const [engine, setEngine] = useState<'smartstudio' | 'comfyui' | 'dashscope'>('comfyui');
+  const [overwrite, setOverwrite] = useState(false);
   const [job, setJob] = useState<BatchJob | null>(null);
   const [starting, setStarting] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -105,7 +107,7 @@ export default function GlobalBatchView({ onBack, onRefresh }: Props) {
     setStarting(true);
     try {
       const effectiveCategory = (batchType === 'anime' || batchType === 'anime_direct') ? 'anime' : (category.length ? category.join(',') : null);
-      const r = await api.batchGenerateStart(batchType, perChar, effectiveCategory, 1024, 1536, 0, (batchType === 'anime' || batchType === 'anime_direct') ? editPrompt : null, engine);
+      const r = await api.batchGenerateStart(batchType, perChar, effectiveCategory, 1024, 1536, 0, (batchType === 'anime' || batchType === 'anime_direct') ? editPrompt : null, engine, overwrite);
       if (r.status !== 'ok') {
         alert(r.message || '启动失败');
       } else {
@@ -140,6 +142,19 @@ export default function GlobalBatchView({ onBack, onRefresh }: Props) {
       startPolling();
     } catch (e: any) {
       alert('恢复失败: ' + e.message);
+    }
+  };
+
+  const handleFreeVram = async () => {
+    try {
+      const r = await api.comfyuiFreeVram();
+      if (r.status === 'ok') {
+        alert(`已释放 ${r.freed}/${r.total} 个 ComfyUI 实例的显存${r.errors?.length ? `\n失败: ${r.errors.join(', ')}` : ''}`);
+      } else {
+        alert('释放失败');
+      }
+    } catch (e: any) {
+      alert('释放显存失败: ' + e.message);
     }
   };
 
@@ -220,11 +235,20 @@ export default function GlobalBatchView({ onBack, onRefresh }: Props) {
               )}
             </div>
           </label>
+          {batchType === 'avatar' && (
+            <label className="gb-overwrite-label">
+              <input type="checkbox" checked={overwrite} onChange={e => setOverwrite(e.target.checked)} disabled={isActive} />
+              覆盖已有头像（不勾选则跳过已有头像的角色）
+            </label>
+          )}
           {batchType !== 'avatar' && (
             <label>生成引擎
-              <select value={engine} onChange={e => setEngine(e.target.value as 'smartstudio' | 'comfyui')}>
+              <select value={engine} onChange={e => setEngine(e.target.value as 'smartstudio' | 'comfyui' | 'dashscope')}>
                 <option value="smartstudio">SmartStudio 云端 (限流, 并发2)</option>
                 <option value="comfyui">本地 ComfyUI (16路并行)</option>
+                {['zimage', 'anime', 'anime_direct'].includes(batchType) && (
+                  <option value="dashscope">百炼 DashScope (wan2.6, 并发4)</option>
+                )}
               </select>
             </label>
           )}
@@ -241,6 +265,9 @@ export default function GlobalBatchView({ onBack, onRefresh }: Props) {
             </button>
           )}
           <button className="gb-refresh-btn" onClick={refreshJob}>刷新</button>
+          {engine === 'comfyui' && !isActive && (
+            <button className="gb-free-vram-btn" onClick={handleFreeVram}>释放显存</button>
+          )}
         </div>
 
         {job && (

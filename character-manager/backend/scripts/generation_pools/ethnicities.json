@@ -1,0 +1,364 @@
+{
+  "categories": [
+    {
+      "name": "Caucasian",
+      "description": "European or white descent",
+      "regions": [
+        "Northern Europe",
+        "Southern Europe",
+        "Eastern Europe",
+        "Western Europe"
+      ]
+    },
+    {
+      "name": "Asian_East",
+      "description": "East Asian descent (Chinese, Japanese, Korean)",
+      "regions": [
+        "China",
+        "Japan",
+        "Korea"
+      ]
+    },
+    {
+      "name": "Asian_South",
+      "description": "South Asian descent (Indian, Pakistani, Bangladesh)",
+      "regions": [
+        "India",
+        "Pakistan",
+        "Bangladesh",
+        "Sri Lanka"
+      ]
+    },
+    {
+      "name": "Asian_Southeast",
+      "description": "Southeast Asian descent (Thai, Vietnamese, Filipino)",
+      "regions": [
+        "Thailand",
+        "Vietnam",
+        "Philippines",
+        "Indonesia",
+        "Malaysia",
+        "Singapore"
+      ]
+    },
+    {
+      "name": "Black_AfricanAmerican",
+      "description": "African or African American descent",
+      "regions": [
+        "Sub-Saharan Africa",
+        "West Africa",
+        "East Africa",
+        "Central Africa"
+      ]
+    },
+    {
+      "name": "Hispanic_Latino",
+      "description": "Latin American or Hispanic descent",
+      "regions": [
+        "Mexico",
+        "Central America",
+        "South America",
+        "Caribbean"
+      ]
+    },
+    {
+      "name": "MiddleEastern",
+      "description": "Middle Eastern descent",
+      "regions": [
+        "Arab countries",
+        "Iran",
+        "Turkey",
+        "Pakistan"
+      ]
+    },
+    {
+      "name": "Mixed",
+      "description": "Mixed heritage or multiethnic",
+      "regions": [
+        "Multiple backgrounds"
+      ]
+    },
+    {
+      "name": "Nordic_Scandinavian",
+      "description": "Cultural heritage rooted in the traditions of Northern Europe, particularly the Scandinavian region.",
+      "regions": [
+        "Norway",
+        "Sweden",
+        "Denmark"
+      ]
+    },
+    {
+      "name": "Sahelian_African",
+      "description": "Ethnic identity from the cultural and historical traditions of the Sahel region in Africa.",
+      "regions": [
+        "Mali",
+        "Niger",
+        "Chad",
+        "Senegal"
+      ]
+    },
+    {
+      "name": "Polynesian_Oceanic",
+      "description": "Cultural-heritage tied to the indigenous peoples of Polynesia in the Pacific Ocean.",
+      "regions": [
+        "Hawaii",
+        "New Zealand",
+        "Samoa",
+        "Tonga"
+      ]
+    },
+    {
+      "name": "Anatolian_Turkic",
+      "description": "Ethnic identity influenced by the Turkic migrations and cultures of Anatolia.",
+      "regions": [
+        "Turkey",
+        "Azerbaijan",
+        "Central Asia"
+      ]
+    },
+    {
+      "name": "Andean_SouthAmerican",
+      "description": "Cultural heritage stemming from the Indigenous peoples of the Andes mountain region.",
+      "regions": [
+        "Peru",
+        "Bolivia",
+        "Ecuador"
+      ]
+    },
+    {
+      "name": "Baltic_European",
+      "description": "Ethnic background rooted in the Baltic region of Northern Europe.",
+      "regions": [
+        "Lithuania",
+        "Latvia",
+        "Estonia"
+      ]
+    },
+    {
+      "name": "Southeast_Asian_Hmong",
+      "description": "Cultural heritage specific to the Hmong people of Southeast Asia.",
+      "regions": [
+        "Laos",
+        "Thailand",
+        "Vietnam"
+      ]
+    },
+    {
+      "name": "Arabian_Peninsula",
+      "description": "Ethnic identity from the cultural and linguistic traditions of the Arabian Peninsula.",
+      "regions": [
+        "Saudi Arabia",
+        "Oman",
+        "Yemen",
+        "United Arab Emirates"
+      ]
+    },
+    {
+      "name": "Celtic_BritishIsles",
+      "description": "Cultural heritage from the Celtic traditions of the British Isles.",
+      "regions": [
+        "Ireland",
+        "Scotland",
+        "Wales"
+      ]
+    },
+    {
+      "name": "Southern_African_Bantu",
+      "description": "Ethnic identity linked to the Bantu-speaking populations of Southern Africa.",
+      "regions": [
+        "South Africa",
+        "Zimbabwe",
+        "Mozambique"
+      ]
+    },
+    {
+      "name": "Central_Asian_Steppe",
+      "description": "Cultural heritage of the nomadic peoples of the Central Asian steppes.",
+      "regions": [
+        "Kazakhstan",
+        "Kyrgyzstan",
+        "Mongolia"
+      ]
+    },
+    {
+      "name": "Amazonian_Indigenous",
+      "description": "Ethnic background from the Indigenous tribes of the Amazon rainforest.",
+      "regions": [
+        "Brazil",
+        "Peru",
+        "Colombia"
+      ]
+    },
+    {
+      "name": "Levantine_Mediterranean",
+      "description": "Cultural identity from the eastern Mediterranean Levant region.",
+      "regions": [
+        "Lebanon",
+        "Syria",
+        "Jordan",
+        "Israel"
+      ]
+    },
+    {
+      "name": "Oceanic_Melanesian",
+      "description": "Cultural-heritage tied to the Indigenous peoples of Melanesia in the Pacific.",
+      "regions": [
+        "Papua New Guinea",
+        "Fiji",
+        "Solomon Islands"
+      ]
+    },
+    {
+      "name": "Mixed_Indigenous_Caribbean",
+      "description": "Ethnic identity combining Indigenous Caribbean heritage with other global influences.",
+      "regions": [
+        "Jamaica",
+        "Haiti",
+        "Trinidad and Tobago",
+        "Puerto Rico"
+      ]
+    },
+    {
+      "name": "Scandinavian_Baltic",
+      "description": "Combines Northern European heritage from Scandinavia with cultural ties to the Baltic region.",
+      "regions": [
+        "Sweden",
+        "Norway",
+        "Denmark",
+        "Estonia",
+        "Latvia",
+        "Lithuania"
+      ]
+    },
+    {
+      "name": "NorthAfrican_Berber",
+      "description": "Roots in the indigenous Amazigh cultures of North Africa, predating Arab influence.",
+      "regions": [
+        "Morocco",
+        "Algeria",
+        "Tunisia",
+        "Libya"
+      ]
+    },
+    {
+      "name": "SouthIndian_Dravidian",
+      "description": "Reflects the traditional Dravidian-speaking heritage of southern India.",
+      "regions": [
+        "India",
+        "Sri Lanka"
+      ]
+    },
+    {
+      "name": "Pacific_Islander_Polynesian",
+      "description": "Cultural background rooted in Polynesian traditions across the Pacific Islands.",
+      "regions": [
+        "Samoa",
+        "Tonga",
+        "Hawaii",
+        "New Zealand"
+      ]
+    },
+    {
+      "name": "EastAsian_Siberian",
+      "description": "Cultural heritage tied to the indigenous groups of Siberia and northern East Asia.",
+      "regions": [
+        "Russia",
+        "Mongolia"
+      ]
+    },
+    {
+      "name": "Caribbean_Indigenous",
+      "description": "Ethnicity blending native Caribbean ancestry with regional cultural elements.",
+      "regions": [
+        "Cuba",
+        "Jamaica",
+        "Trinidad and Tobago",
+        "Puerto Rico"
+      ]
+    },
+    {
+      "name": "CentralAsian_Steppe",
+      "description": "Cultural background derived from the nomadic traditions of the Central Asian steppes.",
+      "regions": [
+        "Kazakhstan",
+        "Kyrgyzstan",
+        "Uzbekistan",
+        "Mongolia"
+      ]
+    },
+    {
+      "name": "WestAfrican_Yoruba",
+      "description": "Ethnic group centered around the Yoruba people and traditions of West Africa.",
+      "regions": [
+        "Nigeria",
+        "Benin",
+        "Togo"
+      ]
+    },
+    {
+      "name": "SouthAmerican_Indigenous",
+      "description": "Cultural identity rooted in the indigenous peoples of South America.",
+      "regions": [
+        "Peru",
+        "Bolivia",
+        "Ecuador",
+        "Colombia"
+      ]
+    },
+    {
+      "name": "SoutheastAsian_Hmong",
+      "description": "Ethnic heritage of the Hmong people, spanning across Southeast Asia.",
+      "regions": [
+        "Vietnam",
+        "Laos",
+        "Thailand",
+        "China"
+      ]
+    },
+    {
+      "name": "MiddleEastern_Caucasian",
+      "description": "Cultural heritage from the crossroads of the Middle East and Caucasus regions.",
+      "regions": [
+        "Georgia",
+        "Armenia",
+        "Azerbaijan",
+        "Turkey"
+      ]
+    },
+    {
+      "name": "Australian_Aboriginal",
+      "description": "Indigenous ethnicity representing the traditional custodians of Australia.",
+      "regions": [
+        "Australia"
+      ]
+    },
+    {
+      "name": "EastEuropean_Romani",
+      "description": "Cultural identity rooted in Romani traditions across Eastern Europe and beyond.",
+      "regions": [
+        "Romania",
+        "Bulgaria",
+        "Hungary",
+        "Greece"
+      ]
+    },
+    {
+      "name": "NorthAmerican_Indigenous",
+      "description": "Ethnic background derived from the indigenous tribes of North America.",
+      "regions": [
+        "United States",
+        "Canada"
+      ]
+    },
+    {
+      "name": "SouthEastAsian_Southern",
+      "description": "Cultural heritage specific to the southern regions of Southeast Asia.",
+      "regions": [
+        "Malaysia",
+        "Indonesia",
+        "Brunei",
+        "Singapore"
+      ]
+    }
+  ]
+}

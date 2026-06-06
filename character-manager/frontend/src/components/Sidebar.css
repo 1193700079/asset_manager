@@ -52,6 +52,11 @@
   background: #ff9800; color: #000; font-weight: bold;
 }
 .sidebar-toolbar .batch-btn:hover { background: #ffb74d; }
+.sidebar-toolbar .gen-btn {
+  background: linear-gradient(135deg, #9b59b6 0%, #e94560 100%);
+  color: #fff; font-weight: bold;
+}
+.sidebar-toolbar .gen-btn:hover { filter: brightness(1.1); background: linear-gradient(135deg, #b06ec9 0%, #ff5874 100%); }
 .char-list { }
 .char-item {
   padding: 10px 16px; cursor: pointer;

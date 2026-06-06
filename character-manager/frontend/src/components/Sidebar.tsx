@@ -18,6 +18,7 @@ interface Props {
   onRefresh: () => void;
   onOpenLibrary: () => void;
   onOpenGlobalBatch: () => void;
+  onOpenBatchChar: () => void;
   onCreateCharacter: (data: { name: string; category?: string; description?: string }) => Promise<void>;
   onDeleteCharacter: (name: string) => Promise<void>;
   onClearCharacter: (name: string) => Promise<void>;
@@ -29,7 +30,7 @@ export default function Sidebar({
   names, index, categories, activeName, activeCat,
   searchQuery, dataSource, sources, onDataSourceChange,
   onSelect, onCategoryChange, onSearchChange,
-  onRefresh, onOpenLibrary, onOpenGlobalBatch,
+  onRefresh, onOpenLibrary, onOpenGlobalBatch, onOpenBatchChar,
   onCreateCharacter, onDeleteCharacter, onClearCharacter,
   confirmEnabled, onToggleConfirm,
 }: Props) {
@@ -128,6 +129,7 @@ export default function Sidebar({
         <button onClick={onRefresh}>Refresh</button>
         <button className="lib-btn" onClick={onOpenLibrary}>素材库</button>
         <button className="batch-btn" onClick={onOpenGlobalBatch}>批处理</button>
+        <button className="gen-btn" onClick={onOpenBatchChar}>批量生成</button>
         <button className="add-btn" onClick={() => setShowCreate(true)}>+</button>
       </div>
       <div className="confirm-toggle-row">
@@ -183,7 +185,10 @@ export default function Sidebar({
       {ctxMenu && (
         <div
           className="ctx-menu"
-          style={{ top: ctxMenu.y, left: ctxMenu.x }}
+          style={{
+            top: Math.min(ctxMenu.y, window.innerHeight - 100),
+            left: Math.min(ctxMenu.x, window.innerWidth - 160),
+          }}
           onClick={e => e.stopPropagation()}
         >
           <button className="ctx-menu-item" onClick={handleClear}>

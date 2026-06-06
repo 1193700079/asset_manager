@@ -38,6 +38,7 @@ import psycopg2.extras
 
 from database import get_conn_for, put_conn_for
 from services import smartstudio_client, vfe_client, avatar as avatar_service, comfyui_single
+from services import dashscope_client
 from services.comfyui_single import (
     COMFYUI_HOST, COMFYUI_PORTS,
     WORKFLOW_SWAP, WORKFLOW_ZIMAGE, WORKFLOW_EDIT, WORKFLOW_VIDEO,
@@ -145,6 +146,12 @@ def _slim_unit(btype: str, unit: dict) -> dict:
             "origin": unit.get("origin"),
         })
     elif btype == "video":
+        base.update({
+            "frame": unit.get("frame"),
+            "video_prompt": unit.get("video_prompt"),
+            "frame_origin": unit.get("frame_origin"),
+        })
+    elif btype == "profile_video":
         base.update({
             "frame": unit.get("frame"),
             "video_prompt": unit.get("video_prompt"),
@@ -437,10 +444,8 @@ _workflow_cache: dict[str, dict] = {}
 
 
 def _load_wf(wf_path: str) -> dict:
-    if wf_path not in _workflow_cache:
-        with open(wf_path, "r", encoding="utf-8") as f:
-            _workflow_cache[wf_path] = json.load(f)
-    return copy.deepcopy(_workflow_cache[wf_path])
+    with open(wf_path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 async def _find_free_port(session: aiohttp.ClientSession) -> int | None:
@@ -644,6 +649,8 @@ async def _gen_zimage(engine: str, prompt: str, w: int, h: int, seed: int, is_st
     if engine == "comfyui":
         session = await _get_session()
         return await _comfy_run(session, "comfy_zimage", prompt=prompt, seed=seed, is_stopping=is_stopping)
+    if engine == "dashscope":
+        return await dashscope_client.create_zimage(prompt, w, h, seed)
     return await _run_and_wait(smartstudio_client.create_zimage(prompt, w, h, seed))
 
 
@@ -706,7 +713,7 @@ async def _build_units(job: dict, ds: str) -> list[dict]:
     elif btype == "zimage":
         # Pull a shared pool of prompts; assign per character.
         for ch in chars:
-            mats = await vfe_client.search_images(limit=per, offset=0)
+            mats = await vfe_client.search_images(limit=per, offset=0, order="random")
             prompts = [it.get("prompt") for it in mats.get("items", []) if it.get("prompt")]
             for p in prompts[:per]:
                 units.append({"char": ch, "prompt": p})
@@ -715,10 +722,14 @@ async def _build_units(job: dict, ds: str) -> list[dict]:
         for ch in chars:
             if not ch.get("avatar_url"):
                 continue
-            mats = await vfe_client.search_images(limit=per, offset=0)
+            mats = await vfe_client.search_images(limit=per, offset=0, order="random")
             prompts = [it.get("prompt") for it in mats.get("items", []) if it.get("prompt")]
             for p in prompts[:per]:
-                units.append({"char": ch, "prompt": p, "base": ch["avatar_url"]})
+                edit_instruction = (
+                    f"Keep the same person's face and identity consistent. "
+                    f"Place this person in the following scene: {p}"
+                )
+                units.append({"char": ch, "prompt": edit_instruction, "base": ch["avatar_url"]})
 
     elif btype == "faceswap":
         for ch in chars:
@@ -761,15 +772,41 @@ async def _build_units(job: dict, ds: str) -> list[dict]:
                     "frame_origin": frame_origin,
                 })
 
-    elif btype == "avatar":
+    elif btype == "profile_video":
         for ch in chars:
-            if ch.get("avatar_url"):
-                continue  # already has an avatar -> skip
+            media = _parse_media(ch.get("media"))
+            first_profile = next(
+                (m["url"] for m in media
+                 if isinstance(m, dict) and m.get("type") == "image"
+                 and m.get("url") and not m.get("is_deleted")
+                 and m.get("media_status") != "pending"),
+                None,
+            )
+            if not first_profile:
+                continue
+            for _ in range(per):
+                try:
+                    vp = await dashscope_client.generate_video_prompt(first_profile)
+                except Exception:
+                    vp = "The person smiles gently, shifts their gaze naturally, with subtle head movement and soft hair sway. Cinematic, natural lighting."
+                units.append({
+                    "char": ch,
+                    "frame": first_profile,
+                    "video_prompt": vp,
+                    "frame_origin": "profile",
+                })
+
+    elif btype == "avatar":
+        overwrite = job.get("overwrite", False)
+        for ch in chars:
+            if ch.get("avatar_url") and not overwrite:
+                continue
             media = _parse_media(ch.get("media"))
             first_img = next(
                 (m["url"] for m in media
                  if isinstance(m, dict) and m.get("type") == "image"
-                 and m.get("url") and not m.get("is_deleted")),
+                 and m.get("url") and not m.get("is_deleted")
+                 and m.get("media_status") != "pending"),
                 None,
             )
             if first_img:
@@ -813,6 +850,11 @@ async def _process_unit(ds: str, btype: str, unit: dict, seed: int, w: int, h: i
         url = await _gen_video(engine, unit["frame"], unit["video_prompt"], seed, is_stopping=is_stopping)
         _append_media(ds, ch["id"], url, "video", f"video_{unit['frame_origin']}",
                       {"frame_origin": unit["frame_origin"], "video_prompt": unit["video_prompt"], "engine": engine})
+
+    elif btype == "profile_video":
+        url = await _gen_video(engine, unit["frame"], unit["video_prompt"], seed, is_stopping=is_stopping)
+        _append_media(ds, ch["id"], url, "video", "video_profile",
+                      {"frame_origin": "profile", "video_prompt": unit["video_prompt"], "engine": engine})
 
     elif btype == "avatar":
         result = await avatar_service.generate_avatar(unit["src_image"])
@@ -863,6 +905,8 @@ def _worker(job_id: str, ds: str, *, resume: bool = False):
             conc = CONCURRENCY
         elif engine == "comfyui":
             conc = len(COMFYUI_PORTS)
+        elif engine == "dashscope":
+            conc = 4
         else:
             conc = CONCURRENCY
         with _lock:
@@ -973,16 +1017,17 @@ def _worker(job_id: str, ds: str, *, resume: bool = False):
 
 
 # ----------------------------------------------------------------- public API
-VALID_TYPES = {"anime", "anime_direct", "faceswap", "zimage", "imageedit", "video", "avatar"}
+VALID_TYPES = {"anime", "anime_direct", "faceswap", "zimage", "imageedit", "video", "profile_video", "avatar"}
 
 
 def start_job(ds: str, btype: str, per_character: int = 10, category: str | None = None,
               width: int = 1024, height: int = 1536, seed: int = 0,
-              edit_prompt: str | None = None, engine: str = "smartstudio") -> dict:
+              edit_prompt: str | None = None, engine: str = "smartstudio",
+              overwrite: bool = False) -> dict:
     global _current_job_id
     if btype not in VALID_TYPES:
         return {"status": "error", "message": f"未知批处理类型: {btype}"}
-    if engine not in ("smartstudio", "comfyui"):
+    if engine not in ("smartstudio", "comfyui", "dashscope"):
         engine = "smartstudio"
     with _lock:
         if _current_job_id and _jobs.get(_current_job_id, {}).get("status") in ("running", "stopping", "building", "starting"):
@@ -994,6 +1039,7 @@ def start_job(ds: str, btype: str, per_character: int = 10, category: str | None
             "category": category, "width": width, "height": height, "seed": seed,
             "edit_prompt": (edit_prompt or "").strip() or ANIME_EDIT_PROMPT,
             "engine": engine,
+            "overwrite": overwrite,
             "status": "starting", "total": 0, "processed": 0,
             "succeeded": 0, "failed": 0, "current": None,
             "results": [], "error": None,

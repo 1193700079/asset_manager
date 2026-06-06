@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar';
 import CharacterDetail from './components/CharacterDetail';
 import AssetLibrary from './components/AssetLibrary';
 import GlobalBatchView from './components/GlobalBatchView';
+import BatchCharacterPanel from './components/BatchCharacterPanel';
 import './App.css';
 
 export default function App() {
@@ -22,6 +23,7 @@ export default function App() {
   const searchQuery = route.query;
   const showLibrary = route.view === 'library';
   const showGlobalBatch = route.view === 'batch';
+  const showBatchChar = route.view === 'batch-char';
 
   // Data source: route.ds wins, else localStorage, else default
   const dataSource = route.dataSource || getDataSource();
@@ -82,6 +84,10 @@ export default function App() {
 
   const handleOpenGlobalBatch = useCallback(() => {
     navigate({ view: 'batch' });
+  }, [navigate]);
+
+  const handleOpenBatchChar = useCallback(() => {
+    navigate({ view: 'batch-char' });
   }, [navigate]);
 
   const handleBackFromBatch = useCallback(() => {
@@ -173,6 +179,7 @@ export default function App() {
         onRefresh={loadData}
         onOpenLibrary={handleOpenLibrary}
         onOpenGlobalBatch={handleOpenGlobalBatch}
+        onOpenBatchChar={handleOpenBatchChar}
         onCreateCharacter={handleCreateCharacter}
         onDeleteCharacter={handleDeleteCharacter}
         onClearCharacter={handleClearCharacter}
@@ -182,6 +189,8 @@ export default function App() {
       <div className="main">
         {showGlobalBatch ? (
           <GlobalBatchView onBack={handleBackFromBatch} onRefresh={loadData} />
+        ) : showBatchChar ? (
+          <BatchCharacterPanel onBack={handleBackFromBatch} onRefresh={loadData} />
         ) : activeChar && resolvedName ? (
           <CharacterDetail
             name={resolvedName}
