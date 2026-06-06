@@ -81,7 +81,7 @@ export interface BatchJob {
   per_character: number;
   category: string | null;
   engine?: 'smartstudio' | 'comfyui';
-  status: 'starting' | 'building' | 'running' | 'stopping' | 'stopped' | 'completed' | 'error';
+  status: 'starting' | 'building' | 'running' | 'stopping' | 'stopped' | 'completed' | 'error' | 'interrupted';
   total: number;
   processed: number;
   succeeded: number;
@@ -91,4 +91,6 @@ export interface BatchJob {
   error: string | null;
   started_at: string;
   finished_at: string | null;
+  resumable?: boolean;
+  resumable_remaining?: number;
 }

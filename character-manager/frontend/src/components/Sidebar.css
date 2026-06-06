@@ -71,3 +71,108 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .char-info { font-size: 11px; color: #aaa; margin-top: 2px; }
+
+.sidebar-toolbar .add-btn {
+  background: #27ae60; color: #fff; font-weight: bold; font-size: 14px;
+  padding: 5px 12px;
+}
+.sidebar-toolbar .add-btn:hover { background: #2ecc71; }
+
+.confirm-toggle-row {
+  padding: 6px 12px 10px;
+  border-bottom: 1px solid #0f3460;
+}
+.confirm-toggle {
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; user-select: none;
+  padding: 6px 8px; border-radius: 6px;
+  transition: background 0.15s;
+}
+.confirm-toggle:hover { background: #0f3460; }
+.confirm-toggle input[type="checkbox"] {
+  position: absolute; opacity: 0; width: 0; height: 0;
+}
+.confirm-toggle-slider {
+  position: relative; flex-shrink: 0;
+  width: 32px; height: 18px;
+  background: #3a506b; border-radius: 9px;
+  transition: background 0.2s;
+}
+.confirm-toggle-slider::after {
+  content: "";
+  position: absolute; top: 2px; left: 2px;
+  width: 14px; height: 14px;
+  background: #eee; border-radius: 50%;
+  transition: transform 0.2s;
+}
+.confirm-toggle input:checked ~ .confirm-toggle-slider {
+  background: #27ae60;
+}
+.confirm-toggle input:checked ~ .confirm-toggle-slider::after {
+  transform: translateX(14px);
+}
+.confirm-toggle-text {
+  display: flex; flex-direction: column; line-height: 1.2;
+  font-size: 12px; color: #eee;
+}
+.confirm-toggle-hint {
+  font-size: 10px; color: #9bb4d4; margin-top: 2px;
+}
+.confirm-toggle input:not(:checked) ~ .confirm-toggle-text .confirm-toggle-hint {
+  color: #f39c12;
+}
+
+.ctx-menu {
+  position: fixed; z-index: 9999;
+  background: #1e2a3a; border: 1px solid #3a506b;
+  border-radius: 6px; padding: 4px 0;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  min-width: 120px;
+}
+.ctx-menu-item {
+  display: block; width: 100%; padding: 8px 16px;
+  background: none; border: none; color: #eee;
+  font-size: 13px; cursor: pointer; text-align: left;
+}
+.ctx-menu-item:hover { background: #2c3e50; }
+.ctx-menu-item.danger { color: #e74c3c; }
+.ctx-menu-item.danger:hover { background: #3d1f1f; }
+
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-box {
+  background: #1e2a3a; border: 1px solid #3a506b;
+  border-radius: 8px; padding: 24px; width: 340px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.modal-box h3 { margin: 0 0 16px; font-size: 16px; }
+.modal-box label {
+  display: block; font-size: 12px; color: #9bb4d4;
+  margin: 10px 0 4px;
+}
+.modal-box input, .modal-box textarea, .modal-box select {
+  width: 100%; padding: 8px 10px;
+  background: #0f3460; border: 1px solid #1a3a6e;
+  color: #eee; border-radius: 4px; font-size: 13px;
+  box-sizing: border-box;
+}
+.modal-box textarea { resize: vertical; }
+.modal-actions {
+  margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end;
+}
+.modal-actions button {
+  padding: 7px 16px; border: none; border-radius: 4px;
+  cursor: pointer; font-size: 13px;
+  background: #3a506b; color: #eee;
+}
+.modal-actions button:hover { background: #4a6080; }
+.modal-actions button.primary {
+  background: #27ae60; color: #fff;
+}
+.modal-actions button.primary:hover { background: #2ecc71; }
+.modal-actions button.primary:disabled {
+  background: #555; color: #999; cursor: not-allowed;
+}

@@ -6,6 +6,8 @@ export interface RemoteImage {
     path: string;
     name: string;
     folder: string;
+    group?: string;
+    materialType?: 'spicy' | 'normal';
     size: number;
     mtime: number;
     ext: string;
@@ -42,6 +44,7 @@ interface AnnotationData {
     created_at: string;
     video_prompt: string | null;
     video_prompt_model: string | null;
+    material_type?: string;  // 'spicy' | 'normal'
 }
 
 interface Props {
@@ -80,6 +83,32 @@ function formatBatchTime(iso: string | null | undefined): string {
 
 type SortMode = "recent" | "size" | "name";
 type TabMode = "unannotated" | "train" | "face" | "rejected" | "watermark" | "annotated";
+type MaterialFilter = 'all' | 'spicy' | 'normal';
+
+const SPICY_DIRS = new Set([
+    'spicy_frames_4s',
+    'video_frames',
+    'clothoff_naked',
+    'clothoff_popular',
+    'clothoff_realism',
+    'clothoff_showing_butt',
+    'clothoff_small_boobs',
+    'createhottie',
+    'fapify_frames',
+    'fapify_thumbs',
+    'jason_photo',
+    'nudiva_feed',
+    'playbox_images',
+    'undress_previews',
+    '123av_poster',
+    'candy_ai_photo_data',
+]);
+
+function getMaterialType(item: RemoteImage): 'spicy' | 'normal' {
+    if (item.materialType === 'normal' || item.materialType === 'spicy') return item.materialType;
+    const topDir = item.group || (item.path ? item.path.split('/')[0] : '') || '';
+    return SPICY_DIRS.has(topDir) ? 'spicy' : 'normal';
+}
 
 const PRESCREEN_ERROR_CATEGORIES: { value: string; label: string }[] = [
     { value: 'mosaic_false_pass', label: '马赛克误通过' },
@@ -100,6 +129,7 @@ export default function ImageBrowser({ onPick, annotationsVersion = 0, initialIm
     const [activeFolder, setActiveFolder] = useState<string>(FOLDER_ALL);
     const [sort, setSort] = useState<SortMode>("recent");
     const [tab, setTab] = useState<TabMode>("unannotated");
+    const [materialFilter, setMaterialFilter] = useState<MaterialFilter>('all');
     const [annotatedPaths, setAnnotatedPaths] = useState<Set<string>>(new Set());
     const [skippedPaths, setSkippedPaths] = useState<Set<string>>(new Set());
     const [skipReasons, setSkipReasons] = useState<Record<string, string>>({});
@@ -222,7 +252,35 @@ export default function ImageBrowser({ onPick, annotationsVersion = 0, initialIm
         }
     }, [data, initialImagePath]);
 
-    const rawItems = data?.items ?? [];
+    const allItems = data?.items ?? [];
+
+    // Apply material_type filter as a base layer on top of fetched items
+    const rawItems = useMemo(() => {
+        if (materialFilter === 'all') return allItems;
+        return allItems.filter(v => getMaterialType(v) === materialFilter);
+    }, [allItems, materialFilter]);
+
+    // Folders sidebar should reflect the current material filter.
+    // A group folder may be a nested path (e.g. "candy_ai_photo_data/Boobjob");
+    // classify by its top-level segment against SPICY_DIRS.
+    const visibleGroups = useMemo(() => {
+        const groups = data?.groups ?? [];
+        if (materialFilter === 'all') return groups;
+        return groups.filter(g => {
+            const top = (g.folder || '').split('/')[0] || '';
+            const isSpicy = SPICY_DIRS.has(top);
+            return materialFilter === 'spicy' ? isSpicy : !isSpicy;
+        });
+    }, [data, materialFilter]);
+
+    // If the currently active folder is no longer visible after a material
+    // filter change, fall back to "All folders" so the grid stays consistent.
+    useEffect(() => {
+        if (activeFolder === FOLDER_ALL) return;
+        if (!visibleGroups.some(g => g.folder === activeFolder)) {
+            setActiveFolder(FOLDER_ALL);
+        }
+    }, [visibleGroups, activeFolder]);
 
     const filteredItems = useMemo(() => {
         switch (tab) {
@@ -327,7 +385,7 @@ export default function ImageBrowser({ onPick, annotationsVersion = 0, initialIm
     // Reset visible count when tab or filter changes
     useEffect(() => {
         setVisibleCount(PAGE_SIZE);
-    }, [tab, activeFolder, query, sort]);
+    }, [tab, activeFolder, query, sort, materialFilter]);
 
     const unannotatedCount = useMemo(
         () => rawItems.filter(v => !annotatedPaths.has(v.path) && !skippedPaths.has(v.path) && !prescreenedPaths.has(v.path)).length,
@@ -766,6 +824,10 @@ export default function ImageBrowser({ onPick, annotationsVersion = 0, initialIm
         '12_interaction': '12 互动',
         '13_style': '13 风格',
         '14_persona': '14 人设',
+        // Cross-mode basic attributes — surfaced separately above the
+        // 14-dimension grid, but kept here as a fallback label source.
+        skin_color: '肤色',
+        age_range: '年龄',
     };
 
     return (
@@ -779,7 +841,7 @@ export default function ImageBrowser({ onPick, annotationsVersion = 0, initialIm
                     {data ? <>
                         <b>{String(data.count).padStart(4, "0")}</b> images indexed{"\n"}
                         <b>{fmtBytes(data.totalSize)}</b> total weight{"\n"}
-                        <b>{data.groups.length}</b> folders
+                        <b>{visibleGroups.length}</b> folders
                     </> : loading ? <>
                         <span className="ib-pulse" />scanning images…
                     </> : null}
@@ -858,6 +920,32 @@ export default function ImageBrowser({ onPick, annotationsVersion = 0, initialIm
                     </button>
 
                 </div>
+                <div className="ib-material-filter" role="tablist" aria-label="素材类型筛选">
+                    <button
+                        type="button"
+                        className={`ib-material-btn ${materialFilter === 'all' ? 'active' : ''}`}
+                        onClick={() => setMaterialFilter('all')}
+                        title="显示全部素材"
+                    >
+                        全部
+                    </button>
+                    <button
+                        type="button"
+                        className={`ib-material-btn ${materialFilter === 'spicy' ? 'active' : ''}`}
+                        onClick={() => setMaterialFilter('spicy')}
+                        title="仅显示 Spicy 素材"
+                    >
+                        🔥 Spicy
+                    </button>
+                    <button
+                        type="button"
+                        className={`ib-material-btn ${materialFilter === 'normal' ? 'active' : ''}`}
+                        onClick={() => setMaterialFilter('normal')}
+                        title="仅显示 Normal 素材"
+                    >
+                        📷 Normal
+                    </button>
+                </div>
                 <label className="ib-search">
                     <span className="ib-search-glyph">⌕</span>
                     <input
@@ -918,7 +1006,7 @@ export default function ImageBrowser({ onPick, annotationsVersion = 0, initialIm
                         <span className="ib-folder-name">All folders</span>
                         <span className="ib-folder-count">{data?.count ?? "—"}</span>
                     </div>
-                    {data?.groups.map(g => (
+                    {visibleGroups.map(g => (
                         <div
                             key={g.folder}
                             className="ib-folder"
@@ -1268,33 +1356,103 @@ export default function ImageBrowser({ onPick, annotationsVersion = 0, initialIm
                         <div className="ib-detail-loading">加载标注结果…</div>
                     ) : annotation ? (
                         <div className="ib-detail-content">
-                            {annotation.prompt && (
-                                <div className="ib-detail-section">
-                                    <h4>Prompt</h4>
-                                    <p className="ib-detail-text">{annotation.prompt}</p>
-                                </div>
-                            )}
-                            {annotation.description && (
-                                <div className="ib-detail-section">
-                                    <h4>描述</h4>
-                                    <p className="ib-detail-text">{annotation.description}</p>
-                                </div>
-                            )}
-                            <div className="ib-detail-section">
-                                <h4>14 维度标签</h4>
-                                <div className="ib-dimensions">
-                                    {Object.entries(annotation.dimensions).sort(([a], [b]) => a.localeCompare(b)).map(([key, tags]) => (
-                                        <div key={key} className="ib-dim-row">
-                                            <span className="ib-dim-label">{dimensionLabels[key] || key}</span>
+                            {(() => {
+                                // Cross-mode basic attributes (skin tone & age range).
+                                // Persisted inside dimensions JSONB at keys 'skin_color' / 'age_range';
+                                // values may be either a single string or a one-element array depending on how
+                                // the backend hydrated them — normalise both shapes here.
+                                const dims = (annotation.dimensions || {}) as Record<string, unknown>;
+                                const pickFirst = (v: unknown): string | null => {
+                                    if (Array.isArray(v)) return typeof v[0] === 'string' ? v[0] : null;
+                                    return typeof v === 'string' ? v : null;
+                                };
+                                const skin = pickFirst(dims.skin_color);
+                                const age = pickFirst(dims.age_range);
+                                if (!skin && !age) return null;
+                                return (
+                                    <div className="ib-detail-section ib-meta-tags">
+                                        <h4>基础属性</h4>
+                                        <div className="ib-meta-tag-row">
+                                            {skin && (
+                                                <span className="ib-meta-tag ib-meta-skin" title="肤色 / Skin tone">
+                                                    <span className="ib-meta-tag-icon" aria-hidden>●</span>
+                                                    <span className="ib-meta-tag-key">肤色</span>
+                                                    <span className="ib-meta-tag-val">{skin}</span>
+                                                </span>
+                                            )}
+                                            {age && (
+                                                <span className="ib-meta-tag ib-meta-age" title="年龄范围 / Age range">
+                                                    <span className="ib-meta-tag-icon" aria-hidden>◆</span>
+                                                    <span className="ib-meta-tag-key">年龄</span>
+                                                    <span className="ib-meta-tag-val">{age}</span>
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                            {annotation.material_type === 'normal' ? (
+                                <>
+                                    <div className="ib-detail-section">
+                                        <div className="ib-reverse-prompt-header">
+                                            <span className="ib-reverse-prompt-eyebrow">Reverse Prompt</span>
+                                            <h4>逆推提示词</h4>
+                                        </div>
+                                        <div className="ib-reverse-prompt">
+                                            {annotation.prompt || '暂无提示词'}
+                                        </div>
+                                    </div>
+                                    {annotation.description && (
+                                        <div className="ib-detail-section">
+                                            <h4>描述</h4>
+                                            <p className="ib-detail-text">{annotation.description}</p>
+                                        </div>
+                                    )}
+                                    {Array.isArray(annotation.tags) && annotation.tags.length > 0 && (
+                                        <div className="ib-detail-section">
+                                            <h4>标签</h4>
                                             <div className="ib-dim-tags">
-                                                {Array.isArray(tags) && tags.length > 0 ? tags.map((t, i) => (
+                                                {annotation.tags.map((t, i) => (
                                                     <span key={i} className="ib-dim-tag">{t}</span>
-                                                )) : <span className="ib-dim-empty">—</span>}
+                                                ))}
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
+                                    )}
+                                </>
+                            ) : (
+                                <>
+                                    {annotation.prompt && (
+                                        <div className="ib-detail-section">
+                                            <h4>Prompt</h4>
+                                            <p className="ib-detail-text">{annotation.prompt}</p>
+                                        </div>
+                                    )}
+                                    {annotation.description && (
+                                        <div className="ib-detail-section">
+                                            <h4>描述</h4>
+                                            <p className="ib-detail-text">{annotation.description}</p>
+                                        </div>
+                                    )}
+                                    <div className="ib-detail-section">
+                                        <h4>14 维度标签</h4>
+                                        <div className="ib-dimensions">
+                                            {Object.entries(annotation.dimensions)
+                                                .filter(([key]) => key !== 'skin_color' && key !== 'age_range')
+                                                .sort(([a], [b]) => a.localeCompare(b))
+                                                .map(([key, tags]) => (
+                                                <div key={key} className="ib-dim-row">
+                                                    <span className="ib-dim-label">{dimensionLabels[key] || key}</span>
+                                                    <div className="ib-dim-tags">
+                                                        {Array.isArray(tags) && tags.length > 0 ? tags.map((t, i) => (
+                                                            <span key={i} className="ib-dim-tag">{t}</span>
+                                                        )) : <span className="ib-dim-empty">—</span>}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                             {annotation.video_prompt && (
                                 <div className="ib-detail-section">
                                     <h4>🎬 图生视频提示词</h4>

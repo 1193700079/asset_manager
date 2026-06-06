@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { CharacterIndex, CategoryCount } from './types';
-import { api, getDataSource, setDataSource } from './api/client';
+import { api, getDataSource, setDataSource, getConfirmEnabled, setConfirmEnabled } from './api/client';
 import { useHashRoute } from './hooks/useHashRoute';
 import Sidebar from './components/Sidebar';
 import CharacterDetail from './components/CharacterDetail';
@@ -13,6 +13,7 @@ export default function App() {
   const [categories, setCategories] = useState<CategoryCount[]>([]);
   const [loading, setLoading] = useState(true);
   const [sources, setSources] = useState<string[]>([]);
+  const [confirmEnabled, setConfirmEnabledState] = useState<boolean>(getConfirmEnabled());
   const { route, navigate } = useHashRoute();
 
   // ── Derive UI state from the URL hash ───────────────────────────────
@@ -101,10 +102,38 @@ export default function App() {
     loadData();
   }, [loadData, navigate]);
 
+  const handleCreateCharacter = useCallback(async (data: { name: string; category?: string; description?: string }) => {
+    await api.createCharacter(data);
+    await loadData();
+  }, [loadData]);
+
+  const handleDeleteCharacter = useCallback(async (name: string) => {
+    await api.deleteCharacter(name);
+    if (activeName === name) {
+      navigate({ view: 'home', name: null });
+    }
+    await loadData();
+  }, [loadData, activeName, navigate]);
+
+  const handleClearCharacter = useCallback(async (name: string) => {
+    await api.clearCharacter(name);
+    await loadData();
+  }, [loadData]);
+
+  const handleToggleConfirm = useCallback((enabled: boolean) => {
+    setConfirmEnabled(enabled);
+    setConfirmEnabledState(enabled);
+  }, []);
+
   const filteredNames = useMemo(
     () => Object.keys(index)
       .filter(n => {
-        if (activeCat && index[n]!.category !== activeCat) return false;
+        const c = index[n]!;
+        if (activeCat === 'featured') {
+          if (![310, 369, 293, 287].includes(c.id)) return false;
+        } else if (activeCat && c.category !== activeCat) {
+          return false;
+        }
         if (searchQuery && !n.toLowerCase().includes(searchQuery.toLowerCase())) return false;
         return true;
       })
@@ -144,6 +173,11 @@ export default function App() {
         onRefresh={loadData}
         onOpenLibrary={handleOpenLibrary}
         onOpenGlobalBatch={handleOpenGlobalBatch}
+        onCreateCharacter={handleCreateCharacter}
+        onDeleteCharacter={handleDeleteCharacter}
+        onClearCharacter={handleClearCharacter}
+        confirmEnabled={confirmEnabled}
+        onToggleConfirm={handleToggleConfirm}
       />
       <div className="main">
         {showGlobalBatch ? (
@@ -153,6 +187,7 @@ export default function App() {
             name={resolvedName}
             data={activeChar}
             onRefresh={loadData}
+            confirmEnabled={confirmEnabled}
           />
         ) : (
           <div className="empty-state">

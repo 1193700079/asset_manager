@@ -23,16 +23,30 @@ source from a request-scoped contextvar, the worker binds the data source for
 its own thread.
 """
 import asyncio
+import copy
 import json
+import os
+import random
 import threading
 import time
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
+import aiohttp
 import psycopg2.extras
 
 from database import get_conn_for, put_conn_for
 from services import smartstudio_client, vfe_client, avatar as avatar_service, comfyui_single
+from services.comfyui_single import (
+    COMFYUI_HOST, COMFYUI_PORTS,
+    WORKFLOW_SWAP, WORKFLOW_ZIMAGE, WORKFLOW_EDIT, WORKFLOW_VIDEO,
+    SWAP_NODE_BODY, SWAP_NODE_FACE, SWAP_NODE_SEED,
+    ZIMG_NODE_POS, ZIMG_NODE_NEG, ZIMG_NODE_SEED, ZIMG_NODE_FILE,
+    EDIT_NODE_IMAGE, EDIT_NODE_PROMPT, EDIT_NODE_SEED, EDIT_NODE_FILE,
+    VID_NODE_IMAGE, VID_NODE_PROMPT, VID_NODE_SEED, VID_NODE_FILE,
+    _upload_to_oss,
+)
 
 POLL_INTERVAL = 5
 POLL_TIMEOUT = 600
@@ -72,6 +86,82 @@ _current_job_id: str | None = None
 _media_locks: dict[tuple, threading.Lock] = {}
 _media_locks_guard = threading.Lock()
 
+# Persistence: each job is mirrored to logs/jobs/<job_id>.json so it can survive
+# a backend crash/restart. Per-unit "status" (pending|done|failed) lets us skip
+# already-completed work on resume.
+_JOBS_DIR = Path(__file__).resolve().parent.parent / "logs" / "jobs"
+_JOBS_DIR.mkdir(parents=True, exist_ok=True)
+_PERSIST_KEYS = (
+    "job_id", "type", "data_source", "per_character", "category",
+    "width", "height", "seed", "edit_prompt", "engine",
+    "status", "total", "processed", "succeeded", "failed", "current",
+    "results", "error", "started_at", "finished_at",
+    "units", "unit_status",
+)
+
+
+def _job_file(job_id: str) -> Path:
+    return _JOBS_DIR / f"{job_id}.json"
+
+
+def _persist_job(job_id: str) -> None:
+    """Atomically write the job snapshot to disk. Caller does not need to hold
+    the lock — we snapshot under the lock here."""
+    with _lock:
+        job = _jobs.get(job_id)
+        if not job:
+            return
+        snap = {k: job.get(k) for k in _PERSIST_KEYS if k in job}
+    path = _job_file(job_id)
+    tmp = path.with_suffix(".tmp")
+    try:
+        with tmp.open("w", encoding="utf-8") as f:
+            json.dump(snap, f, ensure_ascii=False)
+        tmp.replace(path)
+    except Exception as e:
+        # persistence is best-effort; never crash the worker over a disk hiccup
+        try: tmp.unlink(missing_ok=True)
+        except Exception: pass
+        print(f"[batch] persist failed for {job_id}: {e}")
+
+
+def _slim_unit(btype: str, unit: dict) -> dict:
+    """Strip a unit down to the fields we need to rebuild it after a restart.
+    The `char` dict is reduced to {id, name}; the worker re-fetches characters
+    by id on resume so any DB updates are picked up."""
+    ch = unit.get("char") or {}
+    base = {"char_id": ch.get("id"), "char_name": ch.get("name")}
+    if btype in ("anime",):
+        base.update({"prompt": unit.get("prompt"), "edit_prompt": unit.get("edit_prompt")})
+    elif btype in ("anime_direct", "zimage"):
+        base.update({"prompt": unit.get("prompt")})
+    elif btype == "imageedit":
+        base.update({"prompt": unit.get("prompt"), "base": unit.get("base")})
+    elif btype == "faceswap":
+        base.update({
+            "face": unit.get("face"),
+            "body": unit.get("body"),
+            "zimage_prompt": unit.get("zimage_prompt"),
+            "origin": unit.get("origin"),
+        })
+    elif btype == "video":
+        base.update({
+            "frame": unit.get("frame"),
+            "video_prompt": unit.get("video_prompt"),
+            "frame_origin": unit.get("frame_origin"),
+        })
+    elif btype == "avatar":
+        base.update({"src_image": unit.get("src_image")})
+    return base
+
+
+def _hydrate_unit(slim: dict) -> dict:
+    """Reverse of _slim_unit. Builds the dict shape the worker/_process_unit
+    expects, using just {id, name} for the character (sufficient for the
+    helpers that touch it)."""
+    return {**{k: v for k, v in slim.items() if k not in ("char_id", "char_name")},
+            "char": {"id": slim.get("char_id"), "name": slim.get("char_name")}}
+
 
 def _media_lock(ds: str, char_id: int) -> threading.Lock:
     key = (ds, char_id)
@@ -85,8 +175,15 @@ def _media_lock(ds: str, char_id: int) -> threading.Lock:
 
 # ----------------------------------------------------------------- helpers
 def _vfe_image_url(item: dict) -> str | None:
-    """Pick a publicly-fetchable URL for SmartStudio (oss_url preferred)."""
-    return item.get("oss_url") or None
+    """Pick a fetchable URL (oss_url preferred, fallback to VFE local serve)."""
+    oss = item.get("oss_url")
+    if oss:
+        return oss
+    img = item.get("image_url")
+    if img:
+        from config import settings
+        return settings.vfe_url.rstrip("/") + img
+    return None
 
 
 def _parse_media(raw):
@@ -106,11 +203,16 @@ def _fetch_characters(ds: str, category: str | None) -> list[dict]:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             q = """SELECT id, name, description, attributes, avatar_url, media
                    FROM characters
-                   WHERE (is_deleted IS NULL OR is_deleted = FALSE)"""
+                   WHERE (is_deleted IS NULL OR is_deleted = FALSE)
+                     AND creator_id = 'official'"""
             params: list = []
             if category:
-                q += " AND category = %s"
-                params.append(category)
+                cats = [c.strip() for c in category.split(",") if c.strip()]
+                if "anime" in cats:
+                    cats.extend(["anime_male", "anime_female"])
+                    cats = list(set(cats))
+                q += " AND category = ANY(%s)"
+                params.append(cats)
             q += " ORDER BY name"
             cur.execute(q, params)
             return [dict(r) for r in cur.fetchall()]
@@ -158,8 +260,90 @@ def _set_avatar(ds: str, char_id: int, url: str):
         put_conn_for(ds, conn)
 
 
+# Variation pools — randomly picked per generation so same character produces
+# diverse images (different scenes/outfits/poses) while keeping identity.
+SCENE_POOL = [
+    "in a sunlit cozy bedroom",
+    "in a modern minimalist apartment",
+    "on a rooftop at golden hour",
+    "in a vintage cafe with warm light",
+    "by a large window with soft daylight",
+    "in a cherry blossom garden",
+    "on a quiet city street at sunset",
+    "in a stylish library with bookshelves",
+    "at a beach with ocean breeze",
+    "in a softly lit studio with neutral backdrop",
+    "in a flower-filled balcony garden",
+    "at a night cityscape with bokeh lights",
+    "in a traditional Japanese tatami room",
+    "in a cozy kitchen with morning light",
+    "in an art studio with paintings around",
+]
+OUTFIT_POOL = [
+    "casual oversized sweater",
+    "elegant white dress",
+    "stylish denim jacket and jeans",
+    "soft pastel knit cardigan",
+    "school uniform with blazer",
+    "summer floral dress",
+    "cozy hoodie",
+    "office blouse and pencil skirt",
+    "athletic crop top and leggings",
+    "cute sundress",
+    "silk pajamas",
+    "vintage 90s outfit",
+    "leather jacket with t-shirt",
+    "kimono with traditional patterns",
+    "elegant evening dress",
+]
+POSE_POOL = [
+    "sitting gracefully",
+    "standing confidently with hands in pockets",
+    "leaning against a wall casually",
+    "looking back over shoulder",
+    "holding a coffee cup with both hands",
+    "sitting on a bed reading a book",
+    "stretching after waking up",
+    "hand brushing hair behind ear",
+    "playful peace sign gesture",
+    "thoughtful pose with hand on chin",
+    "walking towards camera",
+    "lying down resting on elbow",
+]
+EXPRESSION_POOL = [
+    "warm gentle smile",
+    "playful smirk",
+    "soft thoughtful gaze",
+    "shy pretty smile",
+    "intense focused look",
+    "happy laughter",
+    "calm serene expression",
+    "cheeky wink",
+    "dreamy distant gaze",
+    "confident smile",
+]
+LIGHTING_POOL = [
+    "warm golden hour lighting",
+    "soft natural window light",
+    "moody cinematic lighting",
+    "bright daylight",
+    "neon city night lighting",
+    "soft pastel color grading",
+    "rim lighting from behind",
+    "diffused studio lighting",
+]
+FRAMING_POOL = [
+    "upper body portrait",
+    "medium shot from waist up",
+    "full body shot",
+    "close-up portrait",
+    "three-quarter angle shot",
+]
+
+
 def _build_prompt(name: str, description, attributes) -> str:
-    """Build a portrait-card prompt from the character's profile."""
+    """Build a portrait-card prompt with random scene/outfit/pose variation."""
+    import random as _random
     if isinstance(attributes, str):
         try:
             attributes = json.loads(attributes)
@@ -167,7 +351,6 @@ def _build_prompt(name: str, description, attributes) -> str:
             attributes = {}
     attributes = attributes or {}
 
-    # Core appearance
     age = attributes.get("Age", "")
     ethnicity = attributes.get("Ethnicity", "")
     body = attributes.get("Body", "")
@@ -175,13 +358,11 @@ def _build_prompt(name: str, description, attributes) -> str:
     personality = attributes.get("Personality", "")
     relationship = attributes.get("Relationship", "")
 
-    # Determine gender hint from attributes/relationship/name patterns
     is_female = any(kw in (relationship + " " + occupation).lower()
                     for kw in ("girlfriend", "wife", "girl", "woman", "actress", "model"))
     is_male = any(kw in (relationship + " " + occupation).lower()
                   for kw in ("boyfriend", "husband", "boy", "man", "actor"))
 
-    # Build subject with attractiveness emphasis
     subject_parts = []
     if age:
         subject_parts.append(f"{age} year old")
@@ -195,30 +376,37 @@ def _build_prompt(name: str, description, attributes) -> str:
         subject_parts.append("handsome young man")
     else:
         subject_parts.append("stunningly attractive person")
-
     subject = " ".join(subject_parts)
 
+    scene = _random.choice(SCENE_POOL)
+    outfit = _random.choice(OUTFIT_POOL)
+    pose = _random.choice(POSE_POOL)
+    expression = _random.choice(EXPRESSION_POOL)
+    lighting = _random.choice(LIGHTING_POOL)
+    framing = _random.choice(FRAMING_POOL)
+
+    vibe = ""
+    if personality:
+        v = personality.split(",")[0].strip().split(".")[0].strip()
+        if v:
+            vibe = v.lower()
+
     lines = [
-        f"solo, single person, professional portrait photo of {subject}",
+        f"solo, single person, {framing} of {subject}",
         f"character: {name}",
         "beautiful detailed face, perfect facial features, flawless skin, attractive",
+        f"wearing {outfit}",
+        f"{pose}",
+        f"{expression}" + (f", {vibe} energy" if vibe else ""),
+        f"setting: {scene}",
+        f"{lighting}",
     ]
     if occupation:
-        lines.append(f"occupation: {occupation}")
-    if personality:
-        vibe = personality.split(",")[0].strip().split(".")[0].strip()
-        if vibe:
-            lines.append(f"expression and vibe: {vibe}")
-
-    desc = (description or "").strip()
-    if desc:
-        short_desc = desc[:200]
-        lines.append(f"context: {short_desc}")
+        lines.append(f"occupation hint: {occupation}")
 
     lines.append(
-        "solo portrait, upper body shot, looking at viewer, "
-        "high quality, masterpiece, best quality, detailed, natural lighting, "
-        "shallow depth of field, no other people, single subject only"
+        "looking at viewer, high quality, masterpiece, best quality, "
+        "detailed, shallow depth of field, no other people, single subject only"
     )
 
     return ", ".join(lines)[:1500]
@@ -241,38 +429,242 @@ async def _run_and_wait(submit_coro) -> str:
     raise RuntimeError(f"timed out after {POLL_TIMEOUT}s")
 
 
-async def _comfy(task_type: str, **kwargs) -> str:
-    """Run one ComfyUI task in a thread (blocking) and return its public URL."""
-    loop = asyncio.get_event_loop()
-    res = await loop.run_in_executor(
-        None, lambda: comfyui_single.run_oneshot(task_type=task_type, **kwargs)
-    )
-    if not res.get("ok") or not res.get("url"):
-        raise RuntimeError(res.get("error", "comfyui task failed"))
-    return res["url"]
+COMFYUI_OUTPUT_DIR = Path("/mnt/cypher/project/ComfyUI/output")
+COMFYUI_POLL_INTERVAL = 3
+COMFYUI_POLL_TIMEOUT = 300
+
+_workflow_cache: dict[str, dict] = {}
 
 
-async def _gen_zimage(engine: str, prompt: str, w: int, h: int, seed: int) -> str:
+def _load_wf(wf_path: str) -> dict:
+    if wf_path not in _workflow_cache:
+        with open(wf_path, "r", encoding="utf-8") as f:
+            _workflow_cache[wf_path] = json.load(f)
+    return copy.deepcopy(_workflow_cache[wf_path])
+
+
+async def _find_free_port(session: aiohttp.ClientSession) -> int | None:
+    best_port, best_size = None, float("inf")
+    for port in COMFYUI_PORTS:
+        try:
+            async with session.get(
+                f"http://{COMFYUI_HOST}:{port}/queue",
+                timeout=aiohttp.ClientTimeout(total=5),
+            ) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    size = len(data.get("queue_running", [])) + len(data.get("queue_pending", []))
+                    if size < best_size:
+                        best_size = size
+                        best_port = port
+        except Exception:
+            pass
+    return best_port
+
+
+async def _upload_image_comfy(session: aiohttp.ClientSession, port: int, image_url: str, filename: str) -> str:
+    """Download image from URL and upload to ComfyUI instance, return server filename."""
+    if image_url.startswith(("http://", "https://")):
+        async with session.get(image_url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+            resp.raise_for_status()
+            data = aiohttp.FormData()
+            content = await resp.read()
+            data.add_field("image", content, filename=filename, content_type="image/png")
+    elif Path(image_url).exists():
+        content = Path(image_url).read_bytes()
+        data = aiohttp.FormData()
+        data.add_field("image", content, filename=Path(image_url).name, content_type="image/png")
+    else:
+        raise FileNotFoundError(f"Image not accessible: {image_url}")
+
+    async with session.post(
+        f"http://{COMFYUI_HOST}:{port}/upload/image",
+        data=data,
+        timeout=aiohttp.ClientTimeout(total=30),
+    ) as resp:
+        resp.raise_for_status()
+        result = await resp.json()
+        return result["name"]
+
+
+async def _submit_and_poll_comfy(session: aiohttp.ClientSession, port: int, workflow: dict,
+                                  is_stopping=None) -> dict:
+    """Submit workflow to ComfyUI and poll until done. Returns {ok, files, error}."""
+    async with session.post(
+        f"http://{COMFYUI_HOST}:{port}/prompt",
+        json={"prompt": workflow},
+        timeout=aiohttp.ClientTimeout(total=30),
+    ) as resp:
+        resp_data = await resp.json()
+        if "prompt_id" not in resp_data:
+            err = resp_data.get("error", {}).get("message", "") or str(resp_data)
+            return {"ok": False, "error": f"ComfyUI submit error: {err[:300]}"}
+        prompt_id = resp_data["prompt_id"]
+
+    elapsed = 0
+    while elapsed < COMFYUI_POLL_TIMEOUT:
+        if is_stopping and is_stopping():
+            return {"ok": False, "error": "job stopped"}
+        await asyncio.sleep(COMFYUI_POLL_INTERVAL)
+        elapsed += COMFYUI_POLL_INTERVAL
+        try:
+            async with session.get(
+                f"http://{COMFYUI_HOST}:{port}/history/{prompt_id}",
+                timeout=aiohttp.ClientTimeout(total=15),
+            ) as resp:
+                if resp.status != 200:
+                    continue
+                data = await resp.json()
+                if prompt_id not in data:
+                    continue
+                entry = data[prompt_id]
+                status = entry.get("status", {})
+                if status.get("status_str") == "error":
+                    msgs = status.get("messages", [])
+                    err_msg = str(msgs[-1] if msgs else "execution_error")[:300]
+                    return {"ok": False, "error": err_msg}
+                if status.get("completed", False) or "outputs" in entry:
+                    filenames = []
+                    for node_output in entry.get("outputs", {}).values():
+                        for img in node_output.get("images", []):
+                            if img.get("type") != "output":
+                                continue
+                            fname = img.get("filename", "")
+                            subfolder = img.get("subfolder", "")
+                            filenames.append(f"{subfolder}/{fname}" if subfolder else fname)
+                    return {"ok": True, "files": filenames}
+        except Exception:
+            pass
+
+    return {"ok": False, "error": f"ComfyUI poll timeout after {COMFYUI_POLL_TIMEOUT}s"}
+
+
+async def _comfy_run(session: aiohttp.ClientSession, task_type: str,
+                     image_url: str = "", face_url: str = "",
+                     prompt: str = "", seed: int = 0,
+                     is_stopping=None) -> str:
+    """Pure-async ComfyUI execution: upload, submit, poll, upload result to OSS."""
+    if seed == 0:
+        seed = random.randint(0, 2**31 - 1)
+
+    port = await _find_free_port(session)
+    if port is None:
+        raise RuntimeError("No available ComfyUI instance")
+
+    job_id = uuid.uuid4().hex[:12]
+
+    if task_type == "comfy_swap":
+        wf = _load_wf(WORKFLOW_SWAP)
+        body_name = await _upload_image_comfy(session, port, image_url, "body.png")
+        face_name = await _upload_image_comfy(session, port, face_url, "face.png")
+        wf[SWAP_NODE_BODY]["inputs"]["image"] = body_name
+        wf[SWAP_NODE_FACE]["inputs"]["image"] = face_name
+        wf[SWAP_NODE_SEED]["inputs"]["noise_seed"] = seed
+
+    elif task_type == "comfy_zimage":
+        wf = _load_wf(WORKFLOW_ZIMAGE)
+        wf[ZIMG_NODE_POS]["inputs"]["text"] = prompt
+        wf[ZIMG_NODE_NEG]["inputs"]["text"] = "blurry, ugly, bad anatomy, deformed, low quality"
+        wf[ZIMG_NODE_SEED]["inputs"]["seed"] = seed
+        wf[ZIMG_NODE_FILE]["inputs"]["filename_prefix"] = f"batch/zimg_{job_id}"
+        if "10" in wf and wf["10"].get("class_type") == "EmptyLatentImage":
+            wf["10"]["inputs"]["width"] = 720
+            wf["10"]["inputs"]["height"] = 1280
+
+    elif task_type == "comfy_edit":
+        wf = _load_wf(WORKFLOW_EDIT)
+        img_name = await _upload_image_comfy(session, port, image_url, "edit_input.png")
+        wf[EDIT_NODE_IMAGE]["inputs"]["image"] = img_name
+        wf[EDIT_NODE_PROMPT]["inputs"]["prompt"] = prompt
+        wf[EDIT_NODE_SEED]["inputs"]["seed"] = seed
+        wf[EDIT_NODE_FILE]["inputs"]["filename_prefix"] = f"batch/edit_{job_id}"
+
+    elif task_type == "comfy_video":
+        wf = _load_wf(WORKFLOW_VIDEO)
+        img_name = await _upload_image_comfy(session, port, image_url, "vid_input.png")
+        wf[VID_NODE_IMAGE]["inputs"]["image"] = img_name
+        if prompt:
+            wf[VID_NODE_PROMPT]["inputs"]["value"] = prompt
+        wf[VID_NODE_SEED]["inputs"]["noise_seed"] = seed
+        wf[VID_NODE_FILE]["inputs"]["filename_prefix"] = f"batch/vid_{job_id}"
+
+    else:
+        raise RuntimeError(f"Unknown comfy task type: {task_type}")
+
+    result = await _submit_and_poll_comfy(session, port, wf, is_stopping=is_stopping)
+    if not result["ok"]:
+        raise RuntimeError(result["error"])
+
+    files = result.get("files", [])
+    if not files:
+        raise RuntimeError("ComfyUI returned no output files")
+
+    local_path = str(COMFYUI_OUTPUT_DIR / files[0])
+    if not Path(local_path).exists():
+        raise RuntimeError(f"Output file not found: {local_path}")
+
+    public_url = _upload_to_oss(local_path, job_id)
+    if not public_url:
+        public_url = f"/api/comfyui/result/{job_id}/{Path(files[0]).name}"
+    return public_url
+
+
+# Per-event-loop aiohttp sessions. The batch worker runs in its own thread
+# with its own asyncio loop, so a process-wide singleton would leak across
+# loops and surface as "Event loop is closed" once the previous worker's loop
+# is torn down. Keying by id(loop) keeps each loop's session isolated.
+_aio_sessions: dict[int, aiohttp.ClientSession] = {}
+
+
+def _session_key() -> int:
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.get_event_loop()
+    return id(loop)
+
+
+async def _get_session() -> aiohttp.ClientSession:
+    key = _session_key()
+    sess = _aio_sessions.get(key)
+    if sess is None or sess.closed:
+        sess = aiohttp.ClientSession()
+        _aio_sessions[key] = sess
+    return sess
+
+
+async def _close_session() -> None:
+    key = _session_key()
+    sess = _aio_sessions.pop(key, None)
+    if sess and not sess.closed:
+        await sess.close()
+
+
+async def _gen_zimage(engine: str, prompt: str, w: int, h: int, seed: int, is_stopping=None) -> str:
     if engine == "comfyui":
-        return await _comfy("comfy_zimage", prompt=prompt, seed=seed)
+        session = await _get_session()
+        return await _comfy_run(session, "comfy_zimage", prompt=prompt, seed=seed, is_stopping=is_stopping)
     return await _run_and_wait(smartstudio_client.create_zimage(prompt, w, h, seed))
 
 
-async def _gen_imageedit(engine: str, image: str, prompt: str, seed: int) -> str:
+async def _gen_imageedit(engine: str, image: str, prompt: str, seed: int, is_stopping=None) -> str:
     if engine == "comfyui":
-        return await _comfy("comfy_edit", image_url=image, prompt=prompt, seed=seed)
+        session = await _get_session()
+        return await _comfy_run(session, "comfy_edit", image_url=image, prompt=prompt, seed=seed, is_stopping=is_stopping)
     return await _run_and_wait(smartstudio_client.create_imageedit(image, prompt, seed))
 
 
-async def _gen_faceswap(engine: str, body: str, face: str, seed: int) -> str:
+async def _gen_faceswap(engine: str, body: str, face: str, seed: int, is_stopping=None) -> str:
     if engine == "comfyui":
-        return await _comfy("comfy_swap", image_url=body, face_url=face, seed=seed)
+        session = await _get_session()
+        return await _comfy_run(session, "comfy_swap", image_url=body, face_url=face, seed=seed, is_stopping=is_stopping)
     return await _run_and_wait(smartstudio_client.create_faceswap(body, face, seed))
 
 
-async def _gen_video(engine: str, image: str, prompt: str, seed: int) -> str:
+async def _gen_video(engine: str, image: str, prompt: str, seed: int, is_stopping=None) -> str:
     if engine == "comfyui":
-        return await _comfy("comfy_video", image_url=image, prompt=prompt, seed=seed)
+        session = await _get_session()
+        return await _comfy_run(session, "comfy_video", image_url=image, prompt=prompt, seed=seed, is_stopping=is_stopping)
     return await _run_and_wait(smartstudio_client.create_wan_spicy(image, prompt, seed=seed))
 
 
@@ -332,16 +724,19 @@ async def _build_units(job: dict, ds: str) -> list[dict]:
         for ch in chars:
             if not ch.get("avatar_url"):
                 continue
-            # swap_direct: body = VFE face_nsfw material
+            # Pull VFE face_nsfw materials (now includes prompt from annotation join)
             mats = await vfe_client.get_faceswap_materials(limit=per)
-            for it in mats.get("items", [])[:per]:
+            items = mats.get("items", [])
+            # swap_direct: body = VFE material image directly
+            for it in items[:per]:
                 body = _vfe_image_url(it)
                 if body:
                     units.append({"char": ch, "face": ch["avatar_url"], "body": body, "origin": "swap_direct"})
-            # swap_zimage: body generated by zimage from character prompt
-            zp = _build_prompt(ch["name"], ch.get("description"), ch.get("attributes"))
-            for _ in range(per):
-                units.append({"char": ch, "face": ch["avatar_url"], "zimage_prompt": zp, "origin": "swap_zimage"})
+            # swap_zimage: body generated by zimage using the material's prompt
+            for it in items[:per]:
+                p = it.get("prompt")
+                if p:
+                    units.append({"char": ch, "face": ch["avatar_url"], "zimage_prompt": p, "origin": "swap_zimage"})
 
     elif btype == "video":
         for ch in chars:
@@ -349,8 +744,9 @@ async def _build_units(job: dict, ds: str) -> list[dict]:
             frames = [
                 m for m in media
                 if isinstance(m, dict) and m.get("type") == "image"
-                and m.get("source") in ("swap_direct", "swap_zimage", "imageedit")
+                and m.get("source") in ("swap_direct", "swap_zimage", "imageedit", "zimage", "zimage_anime", "zimage_anime_direct")
                 and m.get("url")
+                and not m.get("is_deleted")
             ]
             for fr in frames[:per]:
                 vps = await vfe_client.get_video_prompts(limit=1)
@@ -383,38 +779,38 @@ async def _build_units(job: dict, ds: str) -> list[dict]:
     return units
 
 
-async def _process_unit(ds: str, btype: str, unit: dict, seed: int, w: int, h: int, engine: str = "smartstudio"):
+async def _process_unit(ds: str, btype: str, unit: dict, seed: int, w: int, h: int, engine: str = "smartstudio", is_stopping=None):
     ch = unit["char"]
     if btype == "anime":
         ep = unit.get("edit_prompt") or ANIME_EDIT_PROMPT
-        base = await _gen_zimage(engine, unit["prompt"], w, h, seed)
-        url = await _gen_imageedit(engine, base, ep, seed)
+        base = await _gen_zimage(engine, unit["prompt"], w, h, seed, is_stopping=is_stopping)
+        url = await _gen_imageedit(engine, base, ep, seed, is_stopping=is_stopping)
         _append_media(ds, ch["id"], url, "image", "zimage_anime",
                       {"prompt": unit["prompt"], "edit_prompt": ep, "engine": engine})
 
     elif btype == "anime_direct":
-        url = await _gen_zimage(engine, unit["prompt"], w, h, seed)
+        url = await _gen_zimage(engine, unit["prompt"], w, h, seed, is_stopping=is_stopping)
         _append_media(ds, ch["id"], url, "image", "zimage_anime_direct",
                       {"prompt": unit["prompt"], "engine": engine})
 
     elif btype == "zimage":
-        url = await _gen_zimage(engine, unit["prompt"], w, h, seed)
+        url = await _gen_zimage(engine, unit["prompt"], w, h, seed, is_stopping=is_stopping)
         _append_media(ds, ch["id"], url, "image", "zimage", {"prompt": unit["prompt"], "engine": engine})
 
     elif btype == "imageedit":
-        url = await _gen_imageedit(engine, unit["base"], unit["prompt"], seed)
+        url = await _gen_imageedit(engine, unit["base"], unit["prompt"], seed, is_stopping=is_stopping)
         _append_media(ds, ch["id"], url, "image", "imageedit", {"prompt": unit["prompt"], "engine": engine})
 
     elif btype == "faceswap":
         if unit["origin"] == "swap_zimage":
-            body = await _gen_zimage(engine, unit["zimage_prompt"], w, h, seed)
+            body = await _gen_zimage(engine, unit["zimage_prompt"], w, h, seed, is_stopping=is_stopping)
         else:
             body = unit["body"]
-        url = await _gen_faceswap(engine, body, unit["face"], seed)
+        url = await _gen_faceswap(engine, body, unit["face"], seed, is_stopping=is_stopping)
         _append_media(ds, ch["id"], url, "image", unit["origin"], {"model_source": unit["origin"], "engine": engine})
 
     elif btype == "video":
-        url = await _gen_video(engine, unit["frame"], unit["video_prompt"], seed)
+        url = await _gen_video(engine, unit["frame"], unit["video_prompt"], seed, is_stopping=is_stopping)
         _append_media(ds, ch["id"], url, "video", f"video_{unit['frame_origin']}",
                       {"frame_origin": unit["frame_origin"], "video_prompt": unit["video_prompt"], "engine": engine})
 
@@ -426,51 +822,127 @@ async def _process_unit(ds: str, btype: str, unit: dict, seed: int, w: int, h: i
 
 
 # ----------------------------------------------------------------- worker
-def _worker(job_id: str, ds: str):
+def _worker(job_id: str, ds: str, *, resume: bool = False):
     job = _jobs[job_id]
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
+    btype = job["type"]
+    engine = job.get("engine", "smartstudio")
+
     async def _run():
-        with _lock:
-            job["status"] = "building"
-        units = await _build_units(job, ds)
-        engine = job.get("engine", "smartstudio")
-        # ComfyUI: parallelize across the whole local port pool. SmartStudio:
-        # keep low to avoid 429. Avatar (local YOLO) uses the default.
-        if job["type"] == "avatar":
+        # ── build (or rehydrate) the unit list ─────────────────────────────
+        if resume and job.get("units"):
+            units = [_hydrate_unit(s) for s in job["units"]]
+            unit_status = list(job.get("unit_status") or [])
+            if len(unit_status) != len(units):
+                unit_status = ["pending"] * len(units)
+        else:
+            with _lock:
+                job["status"] = "building"
+            _persist_job(job_id)
+            # Fail-fast: types that pull material from VFE are useless without it.
+            if btype in ("zimage", "imageedit", "faceswap", "video"):
+                ping = await vfe_client.ping(timeout=3.0)
+                if not ping.get("ok"):
+                    raise RuntimeError(
+                        f"VFE 后端不可用，已取消批处理。请先启动 VFE: "
+                        f"`cd video-frame-extractor && npm run server:daemon`。详情: {ping.get('error')}"
+                    )
+            built = await _build_units(job, ds)
+            units = built
+            slim = [_slim_unit(btype, u) for u in built]
+            unit_status = ["pending"] * len(built)
+            with _lock:
+                job["units"] = slim
+                job["unit_status"] = unit_status
+                job["total"] = len(built)
+            _persist_job(job_id)
+
+        if btype == "avatar":
             conc = CONCURRENCY
         elif engine == "comfyui":
-            conc = len(comfyui_single.COMFYUI_PORTS)
+            conc = len(COMFYUI_PORTS)
         else:
             conc = CONCURRENCY
         with _lock:
-            job["total"] = len(units)
             job["status"] = "running"
+        _persist_job(job_id)
 
         sem = asyncio.Semaphore(conc)
 
-        async def _one(unit):
-            async with sem:
-                with _lock:
-                    if job["status"] == "stopping":
-                        return
-                    job["current"] = unit["char"]["name"]
-                try:
-                    await _process_unit(ds, job["type"], unit, job["seed"], job["width"], job["height"], engine)
-                    with _lock:
-                        job["succeeded"] += 1
-                except Exception as e:
-                    with _lock:
-                        job["failed"] += 1
-                        job["results"].append({
-                            "char": unit["char"]["name"], "ok": False, "error": str(e)[:200],
-                        })
-                finally:
-                    with _lock:
-                        job["processed"] += 1
+        def _check_stopping():
+            with _lock:
+                return job["status"] == "stopping"
 
-        await asyncio.gather(*[_one(u) for u in units])
+        async def _one(idx: int, unit: dict):
+            if _check_stopping():
+                return
+            if unit_status[idx] == "done":
+                return  # already completed in a previous run
+            async with sem:
+                if _check_stopping():
+                    return
+                with _lock:
+                    job["current"] = (unit.get("char") or {}).get("name")
+                max_retries = 2
+                for attempt in range(max_retries + 1):
+                    try:
+                        await _process_unit(ds, btype, unit, job["seed"], job["width"], job["height"], engine, is_stopping=_check_stopping)
+                        with _lock:
+                            unit_status[idx] = "done"
+                            job["unit_status"] = unit_status
+                            job["succeeded"] += 1
+                            job["processed"] += 1
+                        _persist_job(job_id)
+                        return
+                    except asyncio.CancelledError:
+                        return
+                    except Exception as e:
+                        if attempt < max_retries and not _check_stopping():
+                            await asyncio.sleep(3)
+                            continue
+                        with _lock:
+                            unit_status[idx] = "failed"
+                            job["unit_status"] = unit_status
+                            job["failed"] += 1
+                            job["processed"] += 1
+                            job["results"].append({
+                                "char": (unit.get("char") or {}).get("name"),
+                                "ok": False,
+                                "error": str(e)[:200] or type(e).__name__,
+                            })
+                        _persist_job(job_id)
+                        return
+
+        # On resume: re-tally counters from unit_status so the UI is honest.
+        if resume:
+            done = sum(1 for s in unit_status if s == "done")
+            failed = sum(1 for s in unit_status if s == "failed")
+            with _lock:
+                job["succeeded"] = done
+                job["failed"] = failed
+                job["processed"] = done + failed
+            _persist_job(job_id)
+
+        tasks = [asyncio.create_task(_one(i, u)) for i, u in enumerate(units)]
+
+        async def _stop_monitor():
+            while True:
+                await asyncio.sleep(1)
+                if _check_stopping():
+                    for t in tasks:
+                        if not t.done():
+                            t.cancel()
+                    break
+
+        monitor = asyncio.create_task(_stop_monitor())
+        await asyncio.gather(*tasks, return_exceptions=True)
+        monitor.cancel()
+        try:
+            await monitor
+        except asyncio.CancelledError:
+            pass
 
     try:
         loop.run_until_complete(_run())
@@ -478,11 +950,25 @@ def _worker(job_id: str, ds: str):
             job["status"] = "stopped" if job["status"] == "stopping" else "completed"
             job["current"] = None
             job["finished_at"] = datetime.now(timezone.utc).isoformat()
+        _persist_job(job_id)
     except Exception as e:
         with _lock:
             job["status"] = "error"
             job["error"] = str(e)[:300]
+        _persist_job(job_id)
     finally:
+        # Close any HTTP clients that were created against this worker's loop
+        # while the loop is still alive. Doing this after loop.close() — or
+        # leaving them in a process-wide singleton — leaks closed-loop
+        # transports and breaks the next batch run with "Event loop is closed".
+        try:
+            loop.run_until_complete(_close_session())
+        except Exception as ce:
+            print(f"[batch] aiohttp session close failed: {ce}")
+        try:
+            loop.run_until_complete(vfe_client.close_client())
+        except Exception as ce:
+            print(f"[batch] vfe httpx client close failed: {ce}")
         loop.close()
 
 
@@ -512,10 +998,45 @@ def start_job(ds: str, btype: str, per_character: int = 10, category: str | None
             "succeeded": 0, "failed": 0, "current": None,
             "results": [], "error": None,
             "started_at": datetime.now(timezone.utc).isoformat(), "finished_at": None,
+            "units": [], "unit_status": [],
         }
         _current_job_id = job_id
+    _persist_job(job_id)
     threading.Thread(target=_worker, args=(job_id, ds), daemon=True).start()
     return {"status": "ok", "job_id": job_id}
+
+
+def resume_job(job_id: str | None = None) -> dict:
+    """Resume a previously interrupted job. Skips units already marked done.
+    If job_id is omitted, picks the most recently interrupted job on disk."""
+    global _current_job_id
+    with _lock:
+        if _current_job_id and _jobs.get(_current_job_id, {}).get("status") in ("running", "stopping", "building", "starting"):
+            return {"status": "error", "message": "已有批处理在运行中", "job_id": _current_job_id}
+        # Resolve target job: explicit id, or most recent interrupted on disk.
+        target = job_id
+        if not target:
+            candidates = [j for j in _jobs.values() if j.get("status") in ("interrupted", "stopped", "error")]
+            if not candidates:
+                return {"status": "error", "message": "没有可恢复的批处理"}
+            candidates.sort(key=lambda j: j.get("started_at") or "", reverse=True)
+            target = candidates[0]["job_id"]
+        job = _jobs.get(target)
+        if not job:
+            return {"status": "error", "message": f"任务 {target} 不存在"}
+        if job.get("status") in ("running", "stopping", "building", "starting"):
+            return {"status": "error", "message": "任务已经在运行"}
+        if not job.get("units"):
+            return {"status": "error", "message": "该任务没有可恢复的 units（早期版本未持久化）"}
+        ds = job.get("data_source")
+        job["status"] = "starting"
+        job["error"] = None
+        job["finished_at"] = None
+        job["current"] = None
+        _current_job_id = target
+    _persist_job(target)
+    threading.Thread(target=_worker, args=(target, ds), kwargs={"resume": True}, daemon=True).start()
+    return {"status": "ok", "job_id": target, "message": "已恢复"}
 
 
 def get_job(job_id: str | None = None) -> dict | None:
@@ -526,8 +1047,36 @@ def get_job(job_id: str | None = None) -> dict | None:
         job = _jobs.get(jid)
         if not job:
             return None
-        out = {k: v for k, v in job.items() if not k.startswith("_")}
+        # Keep response payload small: hide internal-only fields.
+        hidden = {"units", "unit_status"}
+        out = {k: v for k, v in job.items() if not k.startswith("_") and k not in hidden}
+        # Surface a hint that this job is resumable.
+        if job.get("status") in ("interrupted", "stopped", "error") and job.get("units"):
+            done = sum(1 for s in (job.get("unit_status") or []) if s == "done")
+            out["resumable"] = True
+            out["resumable_remaining"] = max(0, len(job["units"]) - done)
         return out
+
+
+def list_jobs() -> list[dict]:
+    """Lightweight listing for the UI: most recent first."""
+    with _lock:
+        items = []
+        for j in _jobs.values():
+            items.append({
+                "job_id": j["job_id"],
+                "type": j.get("type"),
+                "status": j.get("status"),
+                "total": j.get("total", 0),
+                "processed": j.get("processed", 0),
+                "succeeded": j.get("succeeded", 0),
+                "failed": j.get("failed", 0),
+                "started_at": j.get("started_at"),
+                "finished_at": j.get("finished_at"),
+                "resumable": bool(j.get("units") and j.get("status") in ("interrupted", "stopped", "error")),
+            })
+    items.sort(key=lambda x: x.get("started_at") or "", reverse=True)
+    return items
 
 
 def stop_job(job_id: str | None = None) -> dict:
@@ -538,5 +1087,44 @@ def stop_job(job_id: str | None = None) -> dict:
             return {"status": "error", "message": "任务不存在"}
         if job["status"] in ("running", "starting", "building"):
             job["status"] = "stopping"
-            return {"status": "ok", "message": "正在停止"}
-        return {"status": "ok", "message": f"任务已是 {job['status']}"}
+            _need_persist = True
+        else:
+            _need_persist = False
+            return {"status": "ok", "message": f"任务已是 {job['status']}"}
+    if _need_persist:
+        _persist_job(jid)
+    return {"status": "ok", "message": "正在停止"}
+
+
+def recover_on_startup() -> None:
+    """Load all persisted jobs from disk. Any job that was running/stopping/
+    building/starting at crash time is marked 'interrupted' so the UI can
+    surface a resume button. This is a no-op if there are no job files."""
+    global _current_job_id
+    if not _JOBS_DIR.exists():
+        return
+    files = sorted(_JOBS_DIR.glob("*.json"))
+    loaded = 0
+    interrupted = 0
+    for fp in files:
+        try:
+            with fp.open("r", encoding="utf-8") as f:
+                snap = json.load(f)
+        except Exception as e:
+            print(f"[batch] skip corrupt job file {fp.name}: {e}")
+            continue
+        jid = snap.get("job_id")
+        if not jid:
+            continue
+        if snap.get("status") in ("running", "stopping", "building", "starting"):
+            snap["status"] = "interrupted"
+            interrupted += 1
+        with _lock:
+            _jobs[jid] = snap
+        loaded += 1
+    if loaded:
+        print(f"[batch] recovered {loaded} job(s) from disk ({interrupted} marked interrupted)")
+    # Re-persist the rewritten statuses.
+    for jid in list(_jobs.keys()):
+        if _jobs[jid].get("status") == "interrupted":
+            _persist_job(jid)

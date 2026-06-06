@@ -36,7 +36,8 @@ async def list_characters(category: str | None = None):
                     """SELECT id, name, category, description, attributes, media,
                               content_rating, sort_priority
                        FROM characters
-                       WHERE (is_deleted IS NULL OR is_deleted = FALSE) AND category = %s
+                       WHERE (is_deleted IS NULL OR is_deleted = FALSE)
+                         AND creator_id = 'official' AND category = %s
                        ORDER BY name""",
                     (category,),
                 )
@@ -46,6 +47,7 @@ async def list_characters(category: str | None = None):
                               content_rating, sort_priority
                        FROM characters
                        WHERE (is_deleted IS NULL OR is_deleted = FALSE)
+                         AND creator_id = 'official'
                        ORDER BY name"""
                 )
             rows = cur.fetchall()
@@ -65,6 +67,7 @@ async def list_characters_simple():
             cur.execute(
                 """SELECT id, name, category FROM characters
                    WHERE (is_deleted IS NULL OR is_deleted = FALSE)
+                     AND creator_id = 'official'
                    ORDER BY name"""
             )
             return cur.fetchall()
@@ -80,6 +83,7 @@ async def get_categories():
             cur.execute(
                 """SELECT category, count(*) as count FROM characters
                    WHERE (is_deleted IS NULL OR is_deleted = FALSE)
+                     AND creator_id = 'official'
                    GROUP BY category ORDER BY count(*) DESC"""
             )
             return cur.fetchall()
@@ -115,6 +119,22 @@ async def delete_character(name: str):
         with conn.cursor() as cur:
             cur.execute(
                 "UPDATE characters SET is_deleted = TRUE, deleted_at = NOW() WHERE name = %s",
+                (name,),
+            )
+        conn.commit()
+        return {"status": "ok"}
+    finally:
+        put_conn(conn)
+
+
+@router.post("/{name}/clear")
+async def clear_character(name: str):
+    """Clear a character's avatar and all media, keeping the record."""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE characters SET avatar_url = NULL, media = '[]'::json WHERE name = %s",
                 (name,),
             )
         conn.commit()

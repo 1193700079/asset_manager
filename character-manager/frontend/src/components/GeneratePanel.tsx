@@ -38,11 +38,12 @@ interface Props {
   onRefresh: () => void;
   onStatusChange: (status: string) => void;
   onImageClick: (url: string) => void;
+  confirmEnabled: boolean;
 }
 
 export default function GeneratePanel({
   characterId, characterName, characterStatus, profileImages,
-  onRefresh, onStatusChange, onImageClick,
+  onRefresh, onStatusChange, onImageClick, confirmEnabled,
 }: Props) {
   // Source cards state
   const [sourceCards, setSourceCards] = useState<VFESearchItem[]>([]);
@@ -437,6 +438,7 @@ export default function GeneratePanel({
   };
 
   const handleDiscard = async (task: GenTask) => {
+    if (confirmEnabled && !confirm('确认丢弃此任务？')) return;
     try {
       await api.discardGeneration(task.task_id);
       setTasks(prev => prev.map(t => t.task_id === task.task_id ? { ...t, status: 'discarded' } : t));
@@ -475,7 +477,7 @@ export default function GeneratePanel({
   const handleBatchDiscard = async () => {
     const discardedIds = tasks.filter(t => t.status === 'completed' || t.status === 'succeeded' || t.status === 'failed').map(t => t.task_id);
     if (discardedIds.length === 0) return;
-    if (!confirm(`确认丢弃 ${discardedIds.length} 个任务？`)) return;
+    if (confirmEnabled && !confirm(`确认丢弃 ${discardedIds.length} 个任务？`)) return;
     try {
       await api.batchDiscardGeneration(discardedIds);
       await loadTasks();

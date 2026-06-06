@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "vite",
     "server": "node server/index.mjs",
+    "server:daemon": "bash scripts/run-server.sh start",
+    "server:stop": "bash scripts/run-server.sh stop",
+    "server:restart": "bash scripts/run-server.sh restart",
+    "server:status": "bash scripts/run-server.sh status",
     "dev:all": "node scripts/dev-all.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

@@ -298,6 +298,41 @@
     border-color: var(--ib-accent);
 }
 
+.ib-material-filter {
+    display: flex;
+    gap: 4px;
+    padding: 3px;
+    background: var(--vb-line, #2a2a3e);
+    border-radius: 8px;
+    margin-left: 4px;
+}
+
+.ib-material-btn {
+    padding: 4px 12px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--vb-mute, #a0a0b0);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    font-family: inherit;
+    line-height: 1.4;
+}
+
+.ib-material-btn:hover {
+    color: var(--text, #e0e0e0);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.ib-material-btn.active {
+    background: var(--ib-accent, #6366f1);
+    color: #fff;
+    box-shadow: 0 1px 3px rgba(99, 102, 241, 0.3);
+}
+
 .ib-search {
     display: flex;
     align-items: center;
@@ -794,6 +829,76 @@
     font-size: 11px;
     color: var(--vb-mute);
     opacity: 0.5;
+}
+
+/* ----- Reverse-prompt panel (normal-type assets) -----
+   Distinct visual identity from the 14-dim chips: a dense terminal-style
+   readout framed by a hairline accent gutter, signalling that this is the
+   recovered generative recipe rather than a curated tag set. */
+.ib-reverse-prompt-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.ib-reverse-prompt-header h4 {
+    margin: 0;
+}
+
+.ib-reverse-prompt-eyebrow {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border: 1px solid color-mix(in srgb, var(--ib-accent) 45%, transparent);
+    border-radius: 2px;
+    color: var(--ib-accent);
+    background: var(--ib-accent-soft);
+}
+
+.ib-reverse-prompt {
+    position: relative;
+    background:
+        linear-gradient(180deg,
+            color-mix(in srgb, var(--ib-accent) 4%, transparent) 0%,
+            transparent 60%),
+        color-mix(in srgb, var(--background) 92%, var(--text) 6%);
+    border: 1px solid var(--vb-line);
+    border-left: 2px solid var(--ib-accent);
+    border-radius: 4px;
+    padding: 14px 16px 14px 18px;
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 320px;
+    overflow-y: auto;
+    user-select: text;
+    cursor: text;
+}
+
+.ib-reverse-prompt::before {
+    content: "›";
+    position: absolute;
+    left: 6px;
+    top: 12px;
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: color-mix(in srgb, var(--ib-accent) 70%, transparent);
+    pointer-events: none;
+}
+
+.ib-reverse-prompt::-webkit-scrollbar {
+    width: 6px;
+}
+
+.ib-reverse-prompt::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--ib-accent) 35%, transparent);
+    border-radius: 3px;
 }
 
 .ib-detail-footer {
@@ -1540,4 +1645,100 @@
 .ib-batch-count {
     color: #94a3b8;
     font-size: 11px;
+}
+
+/* ----- Cross-mode basic attribute chips (skin tone & age range) -----
+   Sits above both spicy 14-dim grid and normal reverse-prompt panel.
+   Visual language deliberately mirrors the editorial/terminal vocabulary
+   used elsewhere in this panel: hairline borders, accent-soft fills,
+   monospace key labels, and a "split capsule" form (icon | KEY | value)
+   so the data hierarchy is legible at a glance without leaning on
+   generic pastel gradients. */
+.ib-meta-tags {
+    margin-top: -4px;
+}
+
+.ib-meta-tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ib-meta-tag {
+    --meta-accent: var(--ib-accent);
+    --meta-accent-soft: var(--ib-accent-soft);
+    display: inline-flex;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+    height: 26px;
+    border: 1px solid color-mix(in srgb, var(--meta-accent) 38%, transparent);
+    border-radius: 3px;
+    overflow: hidden;
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px;
+    line-height: 1;
+    background: color-mix(in srgb, var(--background) 92%, var(--meta-accent) 4%);
+    transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.ib-meta-tag:hover {
+    border-color: color-mix(in srgb, var(--meta-accent) 70%, transparent);
+    transform: translateY(-1px);
+}
+
+.ib-meta-tag-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    font-size: 9px;
+    color: var(--meta-accent);
+    background: var(--meta-accent-soft);
+    border-right: 1px solid color-mix(in srgb, var(--meta-accent) 25%, transparent);
+}
+
+.ib-meta-tag-key {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 8px 0 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-size: 9.5px;
+    font-weight: 600;
+    color: var(--meta-accent);
+    background: var(--meta-accent-soft);
+    border-right: 1px solid color-mix(in srgb, var(--meta-accent) 22%, transparent);
+}
+
+.ib-meta-tag-val {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 10px;
+    color: var(--text);
+    font-feature-settings: "tnum" 1;
+    letter-spacing: 0.02em;
+}
+
+/* Skin tone — warm amber accent, semantically tied to complexion. */
+.ib-meta-skin {
+    --meta-accent: #d97706;
+    --meta-accent-soft: color-mix(in srgb, #d97706 12%, transparent);
+}
+
+/* Age range — cool teal accent, distinct from skin tone for fast scanning. */
+.ib-meta-age {
+    --meta-accent: #0ea5e9;
+    --meta-accent-soft: color-mix(in srgb, #0ea5e9 12%, transparent);
+}
+
+@media (prefers-color-scheme: light) {
+    .ib-meta-skin {
+        --meta-accent: #b45309;
+        --meta-accent-soft: color-mix(in srgb, #b45309 10%, transparent);
+    }
+    .ib-meta-age {
+        --meta-accent: #0369a1;
+        --meta-accent-soft: color-mix(in srgb, #0369a1 10%, transparent);
+    }
 }

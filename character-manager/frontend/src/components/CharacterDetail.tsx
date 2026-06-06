@@ -13,9 +13,10 @@ interface Props {
   name: string;
   data: CharacterIndex;
   onRefresh: () => void;
+  confirmEnabled: boolean;
 }
 
-export default function CharacterDetail({ name, data, onRefresh }: Props) {
+export default function CharacterDetail({ name, data, onRefresh, confirmEnabled }: Props) {
   const [modalUrl, setModalUrl] = useState<string | null>(null);
   const [showTrash, setShowTrash] = useState(false);
   const [showGen, setShowGen] = useState(false);
@@ -115,6 +116,7 @@ export default function CharacterDetail({ name, data, onRefresh }: Props) {
           onRefresh={onRefresh}
           onStatusChange={handleStatusChange}
           onImageClick={setModalUrl}
+          confirmEnabled={confirmEnabled}
         />
       )}
 
@@ -124,7 +126,7 @@ export default function CharacterDetail({ name, data, onRefresh }: Props) {
             待选区 / 待审核 ({data.pending_media.length})
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
               <button className="pending-adopt-all" onClick={async () => {
-                if (!confirm(`全部采用 ${data.pending_media.length} 张到 Profile？`)) return;
+                if (confirmEnabled && !confirm(`全部采用 ${data.pending_media.length} 张到 Profile？`)) return;
                 await api.pendingAdoptAll(data.id);
                 onRefresh();
               }}>全部采用</button>
@@ -150,7 +152,7 @@ export default function CharacterDetail({ name, data, onRefresh }: Props) {
                     onRefresh();
                   }}>采用</button>
                   <button className="pending-discard" onClick={async () => {
-                    if (!confirm('移到回收站？(可恢复)')) return;
+                    if (confirmEnabled && !confirm('移到回收站？(可恢复)')) return;
                     await api.softDelete(name, pm.url, false);
                     onRefresh();
                   }}>丢弃</button>
@@ -176,10 +178,11 @@ export default function CharacterDetail({ name, data, onRefresh }: Props) {
         onImageClick={setModalUrl}
         onRefresh={onRefresh}
         mediaStatusMap={data.media_status_map}
+        confirmEnabled={confirmEnabled}
       />
 
       <div className="section-title">Videos ({data.profile_videos.length})</div>
-      <VideoGrid videos={data.profile_videos} characterName={name} characterId={data.id} onRefresh={onRefresh} mediaStatusMap={data.media_status_map} />
+      <VideoGrid videos={data.profile_videos} characterName={name} characterId={data.id} onRefresh={onRefresh} mediaStatusMap={data.media_status_map} confirmEnabled={confirmEnabled} />
 
       <div className="section-title">Generated Images</div>
       <MediaGrid
@@ -190,6 +193,7 @@ export default function CharacterDetail({ name, data, onRefresh }: Props) {
         onImageClick={setModalUrl}
         onRefresh={onRefresh}
         mediaStatusMap={data.media_status_map}
+        confirmEnabled={confirmEnabled}
       />
 
       <ReferenceLibrary characterId={data.id} />

@@ -33,7 +33,7 @@ import express from "express";
 import OSS from "ali-oss";
 import pg from "pg";
 import multer from "multer";
-import { generateDescription, generateDescriptionMultiVote, generateVideoDescription, getActiveModelName, loadPendingTags, savePendingTags, DIMENSION_FILE_MAP, CYPHER_DIR, preScreenImage, preScreenImageBatch, preScreenVideo, generateFeedbackRules, getAvailableModels, preScreenImageMultiVote, preScreenImageBatchMultiVote, createLoadBalancer, convertImagePromptToVideo, getVideoPromptModels } from "./kimi.mjs";
+import { generateDescription, generateDescriptionMultiVote, generateVideoDescription, generateReversePrompt, getActiveModelName, loadPendingTags, savePendingTags, DIMENSION_FILE_MAP, CYPHER_DIR, preScreenImage, preScreenImageBatch, preScreenVideo, generateFeedbackRules, getAvailableModels, preScreenImageMultiVote, preScreenImageBatchMultiVote, createLoadBalancer, convertImagePromptToVideo, getVideoPromptModels } from "./kimi.mjs";
 import { extractFrameAtTimestamp, checkFfmpegAvailable } from "./ffmpeg.mjs";
 
 const { Pool } = pg;
@@ -107,6 +107,36 @@ async function initDB() {
     await pool.query(`ALTER TABLE saved_frames ADD COLUMN IF NOT EXISTS batch_id TEXT`);
     // Migration: record which model generated the video_prompt
     await pool.query(`ALTER TABLE saved_frames ADD COLUMN IF NOT EXISTS video_prompt_model TEXT`);
+    // Migration: distinguish spicy vs normal source material so the UI can
+    // render different annotation flows (14-dim tagging vs reverse prompt).
+    await pool.query(`ALTER TABLE saved_frames ADD COLUMN IF NOT EXISTS material_type TEXT DEFAULT 'spicy'`);
+    // One-shot backfill: classify existing rows by their video_path top-level
+    // directory, consistent with inferMaterialType()/SPICY_DIRS below. We first
+    // reset any legacy/default rows to 'normal', then promote rows whose
+    // top-level directory is a known spicy source to 'spicy'.
+    await pool.query(`
+        UPDATE saved_frames SET material_type = 'normal'
+        WHERE material_type IS NULL OR material_type IN ('normal', 'spicy')
+    `);
+    await pool.query(`
+        UPDATE saved_frames SET material_type = 'spicy'
+        WHERE video_path LIKE 'spicy_frames_4s/%'
+           OR video_path LIKE 'video_frames/%'
+           OR video_path LIKE 'clothoff_naked/%'
+           OR video_path LIKE 'clothoff_popular/%'
+           OR video_path LIKE 'clothoff_realism/%'
+           OR video_path LIKE 'clothoff_showing_butt/%'
+           OR video_path LIKE 'clothoff_small_boobs/%'
+           OR video_path LIKE 'createhottie/%'
+           OR video_path LIKE 'fapify_frames/%'
+           OR video_path LIKE 'fapify_thumbs/%'
+           OR video_path LIKE 'jason_photo/%'
+           OR video_path LIKE 'nudiva_feed/%'
+           OR video_path LIKE 'playbox_images/%'
+           OR video_path LIKE 'undress_previews/%'
+           OR video_path LIKE '123av_poster/%'
+           OR video_path LIKE 'candy_ai_photo_data/%'
+    `);
     // Prescreen batch history: lightweight audit trail for image/video
     // prescreen runs. Allows the UI to surface the last run summary and to
     // reset (delete) either the most recent batch or the entire history.
@@ -570,16 +600,74 @@ let videoPrescreenBatchRunning = false;
 let videoPrescreenBatchAborted = false;
 let videoPrescreenBatchProgress = null;
 
+// Material classification: top-level directories that are "spicy" assets
+// (use the 14-dimension annotation flow). Anything else is treated as
+// "normal" (reverse-prompt annotation).
+const SPICY_DIRS = new Set([
+    'spicy_frames_4s',
+    'video_frames',
+    'clothoff_naked',
+    'clothoff_popular',
+    'clothoff_realism',
+    'clothoff_showing_butt',
+    'clothoff_small_boobs',
+    'createhottie',
+    'fapify_frames',
+    'fapify_thumbs',
+    'jason_photo',
+    'nudiva_feed',
+    'playbox_images',
+    'undress_previews',
+    '123av_poster',
+    'candy_ai_photo_data',
+]);
+
+function inferMaterialType(relativePath) {
+    if (!relativePath) return 'normal';
+    // Accept both POSIX and platform separators; extract the first segment.
+    const normalized = String(relativePath).replace(/\\/g, '/');
+    const topDir = normalized.split('/')[0] || '';
+    return SPICY_DIRS.has(topDir) ? 'spicy' : 'normal';
+}
+
+/**
+ * Merge AI-returned top-level basic attributes (skin_color / age_range)
+ * into the dimensions JSONB payload so that both spicy (14-dimension) and
+ * normal (reverse-prompt) annotations expose them under the same key path.
+ * Always returns a fresh object — callers can pass the merged value to
+ * JSON.stringify() before INSERT without worrying about mutation.
+ */
+function mergeBasicAttrsIntoDimensions(aiResult) {
+    const dims = (aiResult && typeof aiResult.dimensions === 'object' && aiResult.dimensions)
+        ? { ...aiResult.dimensions }
+        : {};
+    const skin = aiResult?.skin_color;
+    const age = aiResult?.age_range;
+    if (typeof skin === 'string' && skin.trim()) {
+        dims.skin_color = [skin.trim()];
+    } else if (Array.isArray(skin) && skin.length > 0) {
+        dims.skin_color = skin;
+    }
+    if (typeof age === 'string' && age.trim()) {
+        dims.age_range = [age.trim()];
+    } else if (Array.isArray(age) && age.length > 0) {
+        dims.age_range = age;
+    }
+    return dims;
+}
+
 function buildImageItem(filePath) {
     const rel = path.relative(IMAGES_ROOT, filePath);
     const segs = rel.split(path.sep);
     const fileName = segs.at(-1);
     const folder = segs.length > 1 ? segs.slice(0, -1).join("/") : "";
+    const relPosix = segs.join("/");
     return {
-        path: segs.join("/"),
+        path: relPosix,
         name: fileName,
         folder,
         group: segs[0] || "",
+        materialType: inferMaterialType(relPosix),
         size: 0,
         mtime: 0,
         ext: path.extname(fileName).toLowerCase().slice(1),
@@ -1457,7 +1545,7 @@ app.post('/api/video/analyze/stream', express.json(), async (req, res) => {
                     aiResult?.pose || null,
                     aiResult?.pose_en || null,
                     JSON.stringify(flatTags),
-                    JSON.stringify(aiResult?.dimensions || {}),
+                    JSON.stringify(mergeBasicAttrsIntoDimensions(aiResult)),
                     aiResult?.style || null,
                     aiResult?.description || null,
                     'video',
@@ -2699,7 +2787,7 @@ app.get('/api/image/annotation', async (req, res) => {
     if (!imagePath) return sendJson(res, 400, { error: 'path required' });
     try {
         const result = await pool.query(
-            `SELECT id, video_path, video_name, prompt, pose, pose_en, tags, dimensions, style, description, model_id, created_at, video_prompt, video_prompt_model
+            `SELECT id, video_path, video_name, prompt, pose, pose_en, tags, dimensions, style, description, model_id, created_at, video_prompt, video_prompt_model, material_type
              FROM saved_frames WHERE video_path = $1 AND format = 'image_annotation'
              ORDER BY created_at DESC LIMIT 1`,
             [imagePath]
@@ -2734,6 +2822,7 @@ app.get('/api/image/annotation', async (req, res) => {
                 created_at: row.created_at,
                 video_prompt: row.video_prompt || null,
                 video_prompt_model: row.video_prompt_model || null,
+                material_type: row.material_type || inferMaterialType(row.video_path) || 'normal',
             }
         });
     } catch (err) {
@@ -3913,7 +4002,7 @@ app.post('/api/image/pipeline/batch', express.json(), async (req, res) => {
                             aiResult?.pose || null,
                             aiResult?.pose_en || null,
                             JSON.stringify(imgFlatTags),
-                            JSON.stringify(aiResult?.dimensions || {}),
+                            JSON.stringify(mergeBasicAttrsIntoDimensions(aiResult)),
                             aiResult?.style || null,
                             aiResult?.description || null,
                             annotateModelUsed || null,
@@ -4170,7 +4259,7 @@ app.post('/api/image/analyze/batch', express.json(), async (req, res) => {
                             aiResult?.pose || null,
                             aiResult?.pose_en || null,
                             JSON.stringify(imgFlatTags),
-                            JSON.stringify(aiResult?.dimensions || {}),
+                            JSON.stringify(mergeBasicAttrsIntoDimensions(aiResult)),
                             aiResult?.style || null,
                             aiResult?.description || null,
                             annotateModelUsed || null,
@@ -4234,7 +4323,12 @@ app.post('/api/image/analyze/single', express.json(), async (req, res) => {
         );
         const humanSkipExamples2 = humanSkipsRes2.rows.map(r => path.basename(r.video_path));
 
-        const aiResult = await generateDescription(imageBase64, format, modelOverride || undefined, !!enableThinking, humanSkipExamples2);
+        // Branch on material classification: "normal" assets get a reverse-prompt
+        // pass; the legacy "spicy" flow keeps the 14-dimension annotator.
+        const materialType = inferMaterialType(imagePath);
+        const aiResult = materialType === 'normal'
+            ? await generateReversePrompt(imageBase64, format, modelOverride || undefined, !!enableThinking)
+            : await generateDescription(imageBase64, format, modelOverride || undefined, !!enableThinking, humanSkipExamples2);
 
         // Handle AI skip response for single image
         if (aiResult?.skip === true) {
@@ -4275,18 +4369,19 @@ app.post('/api/image/analyze/single', express.json(), async (req, res) => {
 
         // Insert new annotation
         await pool.query(
-            `INSERT INTO saved_frames (video_path, video_name, timestamp, oss_url, oss_key, prompt, pose, pose_en, tags, dimensions, style, description, format, model_id, created_at)
-             VALUES ($1, $2, -1, '', '', $3, $4, $5, $6, $7, $8, $9, 'image_annotation', $10, NOW())`,
+            `INSERT INTO saved_frames (video_path, video_name, timestamp, oss_url, oss_key, prompt, pose, pose_en, tags, dimensions, style, description, format, model_id, material_type, created_at)
+             VALUES ($1, $2, -1, '', '', $3, $4, $5, $6, $7, $8, $9, 'image_annotation', $10, $11, NOW())`,
             [
                 imagePath, path.basename(imagePath),
                 aiResult?.prompt || null,
                 aiResult?.pose || null,
                 aiResult?.pose_en || null,
                 JSON.stringify(imgFlatTags),
-                JSON.stringify(aiResult?.dimensions || {}),
+                JSON.stringify(mergeBasicAttrsIntoDimensions(aiResult)),
                 aiResult?.style || null,
                 aiResult?.description || null,
                 aiResult?.modelId || null,
+                materialType,
             ]
         );
         queryCache.invalidate('images_annotated');
@@ -4298,10 +4393,11 @@ app.post('/api/image/analyze/single', express.json(), async (req, res) => {
                 name: path.basename(imagePath),
                 prompt: aiResult?.prompt || null,
                 description: aiResult?.description || null,
-                dimensions: aiResult?.dimensions || {},
+                dimensions: mergeBasicAttrsIntoDimensions(aiResult),
                 tags: imgFlatTags,
                 style: aiResult?.style || null,
                 model_id: aiResult?.modelId || null,
+                material_type: materialType,
             }
         });
     } catch (err) {
@@ -4473,19 +4569,21 @@ app.get('/api/swapface/materials', async (req, res) => {
     setCors(res);
     const { limit = 10 } = req.query;
     try {
-        const where = `WHERE format = 'image_prescreen'
-            AND description ~ '^\\s*\\{'
-            AND (description::jsonb->>'category') = 'face_nsfw'`;
+        const where = `WHERE p.format = 'image_prescreen'
+            AND p.description ~ '^\\s*\\{'
+            AND (p.description::jsonb->>'category') = 'face_nsfw'`;
         const query = `
-            SELECT video_path, video_name, oss_url, prompt, tags, dimensions,
-                   description, created_at
-            FROM saved_frames
+            SELECT p.video_path, p.video_name, p.oss_url, 
+                   COALESCE(a.prompt, p.prompt) as prompt,
+                   p.tags, p.dimensions, p.description, p.created_at
+            FROM saved_frames p
+            LEFT JOIN saved_frames a ON a.video_path = p.video_path AND a.format = 'image_annotation'
             ${where}
             ORDER BY random()
             LIMIT $1
         `;
         const result = await pool.query(query, [Number(limit)]);
-        const countResult = await pool.query(`SELECT count(*) FROM saved_frames ${where}`);
+        const countResult = await pool.query(`SELECT count(*) FROM saved_frames p ${where}`);
         const rows = result.rows.map(r => {
             if (r.created_at) r.created_at = r.created_at.toISOString();
             r.image_url = `/api/images/serve?path=${encodeURIComponent(r.video_path)}`;
@@ -4756,6 +4854,28 @@ async function recoverInterruptedBatches(retries = 3) {
         }
     }
 }
+
+// -------- crash protection ----------------------------------------------------
+// Keep the process alive when an unhandled error occurs. Without this, any
+// unawaited promise rejection (e.g. ffmpeg/db hiccup) will silently kill the
+// server in modern Node, taking down VFE-dependent flows like CM faceswap.
+process.on('uncaughtException', (err) => {
+    console.error(`[fatal] uncaughtException @ ${new Date().toISOString()}:`, err?.stack || err);
+});
+process.on('unhandledRejection', (reason) => {
+    console.error(`[fatal] unhandledRejection @ ${new Date().toISOString()}:`, reason?.stack || reason);
+});
+// Ignore SIGHUP so closing the launching shell doesn't kill the server.
+// Use SIGTERM/SIGINT for explicit shutdown.
+process.on('SIGHUP', () => {
+    console.warn(`[signal] SIGHUP received — ignoring (server stays up).`);
+});
+const _gracefulShutdown = (sig) => {
+    console.log(`[signal] ${sig} received — shutting down.`);
+    process.exit(0);
+};
+process.on('SIGTERM', () => _gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => _gracefulShutdown('SIGINT'));
 
 // -------- startup -------------------------------------------------------------
 app.listen(PORT, () => {

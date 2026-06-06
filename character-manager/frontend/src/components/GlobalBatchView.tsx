@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../api/client';
-import type { BatchJob } from '../types';
-import CustomBatchPanel from './CustomBatchPanel';
+import type { BatchJob, CategoryCount } from '../types';
 import './GlobalBatchView.css';
 
 interface Props {
@@ -22,29 +21,22 @@ const BATCH_TYPES: { key: BatchType; label: string; desc: string }[] = [
 ];
 
 export default function GlobalBatchView({ onBack, onRefresh }: Props) {
-  const [characters, setCharacters] = useState<string[]>([]);
-  const [selectedChar, setSelectedChar] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<CategoryCount[]>([]);
 
   const [batchType, setBatchType] = useState<BatchType>('zimage');
   const [perChar, setPerChar] = useState(10);
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState<string[]>([]);
   const [editPrompt, setEditPrompt] = useState('');
   const [presets, setPresets] = useState<{ id: string; label: string; prompt: string }[]>([]);
-  const [engine, setEngine] = useState<'smartstudio' | 'comfyui'>('smartstudio');
+  const [engine, setEngine] = useState<'smartstudio' | 'comfyui'>('comfyui');
   const [job, setJob] = useState<BatchJob | null>(null);
   const [starting, setStarting] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    api.getCharacterList()
-      .then(chars => {
-        const names = chars.map(c => c.name).sort();
-        setCharacters(names);
-        if (names.length > 0) setSelectedChar(names[0]!);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    api.getCategories()
+      .then(cats => setCategories(cats))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -109,10 +101,10 @@ export default function GlobalBatchView({ onBack, onRefresh }: Props) {
 
   const handleStart = async () => {
     const t = BATCH_TYPES.find(b => b.key === batchType)!;
-    if (!confirm(`启动「${t.label}」？\n范围: ${category ? 'category=' + category : '全部角色'}，每角色 ${perChar} 个。\n生成结果以 pending(待选) 加入角色媒体，需后续审核上线。`)) return;
+    if (!confirm(`启动「${t.label}」？\n范围: ${category.length ? 'category=' + category.join(',') : '全部角色'}，每角色 ${perChar} 个。\n生成结果以 pending(待选) 加入角色媒体，需后续审核上线。`)) return;
     setStarting(true);
     try {
-      const effectiveCategory = (batchType === 'anime' || batchType === 'anime_direct') ? 'anime' : (category || null);
+      const effectiveCategory = (batchType === 'anime' || batchType === 'anime_direct') ? 'anime' : (category.length ? category.join(',') : null);
       const r = await api.batchGenerateStart(batchType, perChar, effectiveCategory, 1024, 1536, 0, (batchType === 'anime' || batchType === 'anime_direct') ? editPrompt : null, engine);
       if (r.status !== 'ok') {
         alert(r.message || '启动失败');
@@ -137,7 +129,22 @@ export default function GlobalBatchView({ onBack, onRefresh }: Props) {
     } catch (e: any) { alert('停止失败: ' + e.message); }
   };
 
+  const handleResume = async () => {
+    try {
+      const r = await api.batchGenerateResume(job?.job_id);
+      if (r.status !== 'ok') {
+        alert(r.message || '恢复失败');
+        return;
+      }
+      await refreshJob();
+      startPolling();
+    } catch (e: any) {
+      alert('恢复失败: ' + e.message);
+    }
+  };
+
   const isActive = !!job && ['running', 'starting', 'building', 'stopping'].includes(job.status);
+  const canResume = !!job && !isActive && !!job.resumable;
   const pct = job && job.total > 0 ? Math.round((job.processed / job.total) * 100) : 0;
 
   return (
@@ -194,13 +201,28 @@ export default function GlobalBatchView({ onBack, onRefresh }: Props) {
               onChange={e => setPerChar(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
               disabled={isActive} />
           </label>
-          <label>分类筛选 (留空=全部)
-            <input type="text" placeholder="如 anime" value={category}
-              onChange={e => setCategory(e.target.value)} disabled={isActive} />
+          <label>分类筛选
+            <div className="gb-cat-tags">
+              {categories.map(c => (
+                <button
+                  key={c.category}
+                  className={`gb-cat-tag ${category.includes(c.category) ? 'active' : ''}`}
+                  disabled={isActive}
+                  onClick={() => setCategory(prev =>
+                    prev.includes(c.category)
+                      ? prev.filter(x => x !== c.category)
+                      : [...prev, c.category]
+                  )}
+                >{c.category} ({c.count})</button>
+              ))}
+              {category.length > 0 && !isActive && (
+                <button className="gb-cat-tag clear" onClick={() => setCategory([])}>清除</button>
+              )}
+            </div>
           </label>
           {batchType !== 'avatar' && (
             <label>生成引擎
-              <select value={engine} onChange={e => setEngine(e.target.value as 'smartstudio' | 'comfyui')} disabled={isActive}>
+              <select value={engine} onChange={e => setEngine(e.target.value as 'smartstudio' | 'comfyui')}>
                 <option value="smartstudio">SmartStudio 云端 (限流, 并发2)</option>
                 <option value="comfyui">本地 ComfyUI (16路并行)</option>
               </select>
@@ -212,6 +234,11 @@ export default function GlobalBatchView({ onBack, onRefresh }: Props) {
             </button>
           ) : (
             <button className="gb-stop-btn" onClick={handleStop}>停止</button>
+          )}
+          {canResume && (
+            <button className="gb-resume-btn" onClick={handleResume}>
+              继续未完成{typeof job?.resumable_remaining === 'number' ? ` (剩 ${job.resumable_remaining})` : ''}
+            </button>
           )}
           <button className="gb-refresh-btn" onClick={refreshJob}>刷新</button>
         </div>
@@ -241,28 +268,6 @@ export default function GlobalBatchView({ onBack, onRefresh }: Props) {
         )}
         <p className="gb-hint">生成的图片/视频会以「待审核」状态出现在各角色详情里，请到角色详情用状态按钮挑选并设为 online。</p>
       </div>
-
-      {loading ? (
-        <div className="gb-loading">加载中...</div>
-      ) : characters.length === 0 ? (
-        <div className="gb-empty">无可用角色</div>
-      ) : (
-        <>
-          <div className="gb-char-select">
-            <label>单角色自定义脚本:</label>
-            <select value={selectedChar} onChange={e => setSelectedChar(e.target.value)}>
-              {characters.map(name => (
-                <option key={name} value={name}>{name}</option>
-              ))}
-            </select>
-          </div>
-          {selectedChar && (
-            <div className="gb-content">
-              <CustomBatchPanel characterName={selectedChar} />
-            </div>
-          )}
-        </>
-      )}
     </div>
   );
 }

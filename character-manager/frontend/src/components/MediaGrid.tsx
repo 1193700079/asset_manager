@@ -12,20 +12,22 @@ interface Props {
   onImageClick: (url: string) => void;
   onRefresh: () => void;
   mediaStatusMap?: Record<string, string>;
+  confirmEnabled: boolean;
 }
 
-export default function MediaGrid({ images, tag, characterName, characterId, onImageClick, onRefresh, mediaStatusMap }: Props) {
+export default function MediaGrid({ images, tag, characterName, characterId, onImageClick, onRefresh, mediaStatusMap, confirmEnabled }: Props) {
   if (!images.length) return <div className="empty">No images</div>;
 
   const handleDelete = async (e: React.MouseEvent, url: string) => {
     e.stopPropagation();
-    if (!confirm('Move to trash? (recoverable)')) return;
+    if (confirmEnabled && !confirm('Move to trash? (recoverable)')) return;
     await api.softDelete(characterName, url, false);
     onRefresh();
   };
 
   const handleHardDelete = async (e: React.MouseEvent, url: string) => {
     e.stopPropagation();
+    // 彻底删除（不可恢复）始终保留确认，不受开关影响
     if (!confirm('⚠️ PERMANENTLY DELETE this image AND its OSS file?\nThis cannot be undone.')) return;
     const r = await api.softDelete(characterName, url, true);
     if (r.status !== 'ok') alert(`Failed: ${r.mode || 'unknown error'}`);

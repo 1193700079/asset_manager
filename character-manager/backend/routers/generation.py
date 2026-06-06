@@ -684,3 +684,16 @@ async def batch_generate_status(job_id: str | None = None):
 @router.post("/batch-generate/stop")
 async def batch_generate_stop(job_id: str | None = None):
     return batch_processing.stop_job(job_id)
+
+
+@router.post("/batch-generate/resume")
+async def batch_generate_resume(job_id: str | None = None):
+    """Resume a previously interrupted batch job. Skips units already done.
+    If job_id is omitted the server picks the most recently interrupted job."""
+    return batch_processing.resume_job(job_id)
+
+
+@router.get("/batch-generate/jobs")
+async def batch_generate_list_jobs():
+    """List all known batch jobs (in-memory + persisted) for the UI."""
+    return {"status": "ok", "jobs": batch_processing.list_jobs()}

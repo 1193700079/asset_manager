@@ -20,6 +20,16 @@ export function setDataSource(name: string): void {
   localStorage.setItem(DS_KEY, name);
 }
 
+const CONFIRM_KEY = 'cm_confirm_on_action';
+
+export function getConfirmEnabled(): boolean {
+  return localStorage.getItem(CONFIRM_KEY) !== 'false'; // 默认 true（需要确认）
+}
+
+export function setConfirmEnabled(enabled: boolean): void {
+  localStorage.setItem(CONFIRM_KEY, enabled ? 'true' : 'false');
+}
+
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set('X-Data-Source', getDataSource());
@@ -94,6 +104,17 @@ export const api = {
       { method: 'POST' }
     ),
 
+  batchGenerateResume: (jobId?: string) =>
+    fetchJson<{ status: string; job_id?: string; message?: string }>(
+      `/api/generation/batch-generate/resume${jobId ? `?job_id=${encodeURIComponent(jobId)}` : ''}`,
+      { method: 'POST' }
+    ),
+
+  batchGenerateListJobs: () =>
+    fetchJson<{ status: string; jobs: Array<{ job_id: string; type: string; status: string; total: number; processed: number; succeeded: number; failed: number; started_at: string | null; finished_at: string | null; resumable: boolean }> }>(
+      '/api/generation/batch-generate/jobs'
+    ),
+
   getIndex: () =>
     fetchJson<Record<string, CharacterIndex>>('/api/index'),
 
@@ -102,6 +123,23 @@ export const api = {
 
   getCharacterList: () =>
     fetchJson<CharacterListItem[]>('/api/characters/list'),
+
+  createCharacter: (data: { name: string; category?: string; description?: string }) =>
+    fetchJson<{ status: string; id: number | null }>('/api/characters', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+
+  deleteCharacter: (name: string) =>
+    fetchJson<{ status: string }>(`/api/characters/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    }),
+
+  clearCharacter: (name: string) =>
+    fetchJson<{ status: string }>(`/api/characters/${encodeURIComponent(name)}/clear`, {
+      method: 'POST',
+    }),
 
   softDelete: (name: string, imageUrl: string, hard: boolean = false) =>
     fetchJson<{ status: string; mode?: string; removed_entries?: number; oss_deleted?: boolean; oss_message?: string; trashed?: number }>(

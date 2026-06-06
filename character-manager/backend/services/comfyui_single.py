@@ -21,7 +21,7 @@ from typing import Optional
 import requests
 
 # ── Workflow paths ────────────────────────────────
-WORKFLOW_SWAP = "/mnt/user/joseph/data/ScrapedData/换脸生视频工作流.json"
+WORKFLOW_SWAP = "/mnt/cypher/project/asset_manager/换脸生视频工作流.json"
 WORKFLOW_ZIMAGE = "/mnt/user/joseph/data/ScrapedData/Z-Image+Base+&+Turbo+双重采样工作流-cypher (2).json"
 WORKFLOW_EDIT = "/mnt/user/joseph/data/ScrapedData/Joseph-qwen-image-edit (3).json"
 WORKFLOW_VIDEO = "/mnt/cypher/project/asset_manager/Vantage-Sulphur-2-Workflow.json"

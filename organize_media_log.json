@@ -1,0 +1,29 @@
+{
+  "timestamp": "2026-06-05 19:41:59",
+  "source": "/mnt/data",
+  "mode": "symlink",
+  "dry_run": false,
+  "summary": {
+    "total_found": 60807,
+    "linked": 47200,
+    "skipped": 13607,
+    "errors": 0,
+    "scan_time_s": 50.7,
+    "link_time_s": 91.5
+  },
+  "by_type": {
+    "image": {
+      "count": 14782,
+      "size_gb": 13.75
+    },
+    "video": {
+      "count": 7666,
+      "size_gb": 2105.19
+    },
+    "audio": {
+      "count": 38359,
+      "size_gb": 1350.75
+    }
+  },
+  "errors": []
+}

@@ -9,6 +9,7 @@ from config import settings
 from database import init_pool, close_pool, get_conn, put_conn, set_data_source
 from routers import characters_router, media_router, reference_router, asset_library_router, generation_router, scripts_router, comfyui_single_router, avatar_router
 from services import vfe_client, smartstudio_client, script_runner
+from services import batch_processing
 from services.supabase_storage import ensure_bucket_exists
 
 
@@ -27,6 +28,13 @@ def _parse_json(val):
 async def lifespan(app: FastAPI):
     init_pool()
     await ensure_bucket_exists()
+
+    # Load persisted batch jobs from disk so the UI can resume any that were
+    # cut off by a previous crash/restart. Best-effort: never fatal.
+    try:
+        batch_processing.recover_on_startup()
+    except Exception as e:
+        print(f"[batch] startup recovery failed: {e}")
 
     # Kill all running batch script jobs on shutdown
     def _cleanup():
@@ -95,6 +103,7 @@ async def get_index():
                           COALESCE(character_status, 'pending') as character_status
                    FROM characters
                    WHERE (is_deleted IS NULL OR is_deleted = FALSE)
+                     AND creator_id = 'official'
                    ORDER BY name"""
             )
             chars = cur.fetchall()

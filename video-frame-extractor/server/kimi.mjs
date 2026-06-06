@@ -261,8 +261,8 @@ export async function preScreenImage(imageBase64, format = 'jpeg', modelOverride
 
 如果通过（should_annotate: true），还需分类：
 - **watermark**：条件1-3全部通过 + 有明显文字水印（尤其左下角、右下角）→ 高质量NSFW但需去水印后使用
-- **face_nsfw**：无水印，图片中有完整、清晰、高清的人脸可见（正脸或3/4侧脸，五官清楚）且包含 NSFW 内容 → 适合换脸素材
-- **body_nsfw**：无水印，NSFW 内容但无清晰完整人脸（仅身体局部、背面、脸被遮挡/截断/模糊等）→ NSFW训练素材
+- **face_nsfw**：无水印，图片中有且仅有一张完整、清晰、高清的人脸（正脸或3/4侧脸，五官清楚），不存在第二张人脸，且包含 NSFW 内容 → 适合换脸素材（多人脸场景不属于此类，应归入 body_nsfw）
+- **body_nsfw**：无水印，NSFW 内容但无清晰完整的单人脸（仅身体局部、背面、脸被遮挡/截断/模糊、或存在多张人脸等情况）→ NSFW训练素材
 
 注意：watermark 仅用于「高质量NSFW + 有明显水印」的情况！有水印但不是高质量NSFW → 直接拒绝（should_annotate: false）。
 
@@ -271,8 +271,8 @@ export async function preScreenImage(imageBase64, format = 'jpeg', modelOverride
 
 category 说明：
 - watermark: 高质量NSFW + 有明显文字水印，值得去水印后使用（仅限高质量NSFW图片！）
-- face_nsfw: 无水印 + 有清晰完整人脸 + NSFW内容（最佳换脸素材）
-- body_nsfw: 无水印 + NSFW内容但无清晰人脸（NSFW训练素材）
+- face_nsfw: 无水印 + 有且仅有一张清晰完整人脸 + NSFW内容（最佳换脸素材，多人脸不算）
+- body_nsfw: 无水印 + NSFW内容但无清晰单人脸，含多人脸场景（NSFW训练素材）
 - none: should_annotate为false时使用
 
 confidence 说明：
@@ -658,6 +658,10 @@ ${CYPHER_CONTENT}
 对图片进行 **14维度全标注**，为每个维度选择 1-3 个最匹配的标签（格式：中文 | english）。
 如果识别到的标签不在 Cypher 词库中，标记 [NEW] 前缀。
 
+**额外要求**：除了 14 维度标注外，请额外判断图片中人物的肤色与年龄范围，并作为顶级字段单独输出（用于全局基础属性展示）：
+- skin_color: 使用英文统一描述（如 fair, tan, olive, brown, dark 等）
+- age_range: 字符串格式，例如 "18-22", "23-28", "29-35", "36-45"
+
 ## 输出格式（严格 JSON）
 {"prompt": "高质量英文文生图 prompt",
  "dimensions": {
@@ -676,6 +680,8 @@ ${CYPHER_CONTENT}
    "13_props": ["标签cn|tag_en", ...],
    "14_persona": ["标签cn|tag_en", ...]
  },
+ "skin_color": "fair | tan | olive | brown | dark | ...",
+ "age_range": "18-22 | 23-28 | 29-35 | 36-45",
  "description": "简短场景描述"}
 
 只输出 JSON，不要输出其他内容。`;
@@ -752,6 +758,124 @@ ${CYPHER_CONTENT}
         const preview = String(content).slice(0, 200);
         throw new Error(`Failed to parse AI response as JSON: ${parseErr.message}. Content preview: ${preview}`);
     }
+}
+
+/**
+ * Reverse-engineer a text-to-image prompt from a "normal" (non-spicy) asset.
+ * Reuses the same DashScope chat-completions plumbing as generateDescription()
+ * but swaps in a prompt-recovery instruction set. The 14-dimension tagging
+ * pipeline is intentionally bypassed — these assets are catalogued by their
+ * recovered generation prompt instead.
+ *
+ * @param {string} imageBase64 - base64-encoded image data
+ * @param {string} format - image format (jpeg, png, etc.)
+ * @param {string} [modelOverride] - explicit model key (kimi/qwen/deepseek/...)
+ * @param {boolean} [enableThinking=false]
+ * @returns {Promise<{prompt:string, style:string, description:string, tags:string[], dimensions:Object, pose:null, pose_en:null, modelId:string}>}
+ */
+export async function generateReversePrompt(imageBase64, format = 'jpeg', modelOverride, enableThinking = false) {
+    const { modelName, systemPrompt } = getModelConfig(modelOverride);
+
+    const userPrompt = `You are an expert AI image prompt engineer. Analyze this image and reverse-engineer the most likely text-to-image generation prompt that could have produced it.
+
+Your response MUST be a valid JSON object with this exact structure:
+{
+  "prompt": "A detailed English text-to-image prompt that could generate this image. Include subject description, pose, clothing, setting, lighting, camera angle, style, and quality tags.",
+  "style": "The overall visual style (e.g., photorealistic, anime, 3D render, digital art)",
+  "description": "A brief 1-sentence description of what's in the image",
+  "tags": ["tag1", "tag2", "tag3"],
+  "skin_color": "Subject's skin tone in English (e.g. fair, tan, olive, brown, dark)",
+  "age_range": "Estimated age range as a string (e.g. 18-22, 23-28, 29-35, 36-45)"
+}
+
+Rules:
+- The prompt should be detailed enough to recreate a very similar image
+- Use standard Stable Diffusion / Midjourney prompt conventions
+- Include quality modifiers like "masterpiece, best quality, high resolution" if the image is high quality
+- Include camera/composition info (close-up, full body, etc.)
+- Include lighting description
+- Tags should be simple keywords describing the main elements
+- ALWAYS estimate the subject's skin_color and age_range; use the canonical English buckets above for consistency
+- Response MUST be valid JSON only, no extra text`;
+
+    const response = await fetch(`${DASHSCOPE_BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${DASHSCOPE_API_KEY}`,
+            'X-DashScope-DataInspection': JSON.stringify({ input: 'disable', output: 'disable' }),
+        },
+        body: JSON.stringify({
+            model: modelName,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                {
+                    role: 'user',
+                    content: [
+                        { type: 'image_url', image_url: { url: `data:image/${format};base64,${imageBase64}` } },
+                        { type: 'text', text: userPrompt },
+                    ],
+                },
+            ],
+            max_tokens: 4096,
+            enable_thinking: !!enableThinking,
+        }),
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`AI API error (${response.status}): ${errorText}`);
+    }
+
+    const data = await response.json();
+
+    if (data && data.error) {
+        const errMsg = typeof data.error === 'string' ? data.error : (data.error.message || JSON.stringify(data.error));
+        throw new Error(`AI API returned error: ${errMsg}`);
+    }
+    if (!data || !Array.isArray(data.choices) || data.choices.length === 0 || !data.choices[0]?.message?.content) {
+        const preview = JSON.stringify(data).slice(0, 200);
+        throw new Error(`AI API unexpected response shape (no choices/message/content). Preview: ${preview}`);
+    }
+
+    const content = data.choices[0].message.content;
+
+    // Same JSON extraction strategy as generateDescription(): tolerate ```json fences
+    // and any preamble text emitted in thinking mode.
+    let jsonStr = content;
+    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+        jsonStr = jsonMatch[1].trim();
+    } else {
+        const firstBrace = content.indexOf('{');
+        if (firstBrace > 0) {
+            jsonStr = content.slice(firstBrace);
+        }
+    }
+
+    let parsed;
+    try {
+        parsed = JSON.parse(jsonStr);
+    } catch (parseErr) {
+        const preview = String(content).slice(0, 200);
+        throw new Error(`Failed to parse AI response as JSON: ${parseErr.message}. Content preview: ${preview}`);
+    }
+
+    return {
+        prompt: typeof parsed.prompt === 'string' ? parsed.prompt : '',
+        style: typeof parsed.style === 'string' ? parsed.style : null,
+        description: typeof parsed.description === 'string' ? parsed.description : null,
+        tags: Array.isArray(parsed.tags) ? parsed.tags : [],
+        // Normal assets bypass the 14-dimension flow entirely.
+        dimensions: {},
+        // Cross-mode basic attributes — surfaced as top-level fields so the
+        // index.mjs persistence layer can merge them into dimensions JSONB.
+        skin_color: typeof parsed.skin_color === 'string' ? parsed.skin_color : null,
+        age_range: typeof parsed.age_range === 'string' ? parsed.age_range : null,
+        pose: null,
+        pose_en: null,
+        modelId: modelName,
+    };
 }
 
 /**
@@ -849,7 +973,7 @@ ${voterSummaries}
 - prompt 应选择最详细、最准确的描述
 - dimensions 的每个维度应选择最贴切的标签
 
-输出严格JSON（格式与标注模型相同，不要输出任何其他内容）：
+输出严格JSON（格式与标注模型相同，不要输出任何其他内容）。除 14 维度外，还需输出顶级字段 skin_color 与 age_range（用于全局基础属性展示）：
 {"prompt": "高质量英文文生图 prompt",
  "dimensions": {
    "01_scene": ["标签cn|tag_en", ...],
@@ -867,6 +991,8 @@ ${voterSummaries}
    "13_props": ["标签cn|tag_en", ...],
    "14_persona": ["标签cn|tag_en", ...]
  },
+ "skin_color": "fair | tan | olive | brown | dark | ...",
+ "age_range": "18-22 | 23-28 | 29-35 | 36-45",
  "description": "简短场景描述"}`;
 
     try {

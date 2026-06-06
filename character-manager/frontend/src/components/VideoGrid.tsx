@@ -7,20 +7,22 @@ interface Props {
   characterName: string;
   characterId: number;
   mediaStatusMap?: Record<string, string>;
+  confirmEnabled: boolean;
 }
 
-export default function VideoGrid({ videos, characterName, characterId, onRefresh, mediaStatusMap }: Props & { onRefresh: () => void }) {
+export default function VideoGrid({ videos, characterName, characterId, onRefresh, mediaStatusMap, confirmEnabled }: Props & { onRefresh: () => void }) {
   if (!videos.length) return <div className="empty">No videos</div>;
 
   const handleDelete = async (e: React.MouseEvent, url: string) => {
     e.stopPropagation();
-    if (!confirm('Move video to trash? (recoverable)')) return;
+    if (confirmEnabled && !confirm('Move video to trash? (recoverable)')) return;
     await api.softDelete(characterName, url, false);
     onRefresh();
   };
 
   const handleHardDelete = async (e: React.MouseEvent, url: string) => {
     e.stopPropagation();
+    // 彻底删除（不可恢复）始终保留确认，不受开关影响
     if (!confirm('⚠️ PERMANENTLY DELETE this video AND its OSS file?\nThis cannot be undone.')) return;
     const r = await api.softDelete(characterName, url, true);
     if (r.status !== 'ok') alert(`Failed: ${r.mode || 'unknown error'}`);
