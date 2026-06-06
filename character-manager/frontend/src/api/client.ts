@@ -69,22 +69,68 @@ export const api = {
       body: JSON.stringify({ character_id: characterId, voice_id: voiceId }),
     }),
 
+  generateCharacters: (params: {
+    category: 'girlfriend' | 'boyfriend' | 'anime_female' | 'anime_male';
+    count: number;
+    write_db?: boolean;
+    batch_size?: number;
+  }) =>
+    fetchJson<{
+      characters: {
+        name: string;
+        category: string;
+        description: string;
+        attributes: Record<string, string>;
+      }[];
+      total: number;
+      written: number;
+      skipped_duplicates: number;
+    }>('/api/generation/characters', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        category: params.category,
+        count: params.count,
+        write_db: params.write_db ?? false,
+        batch_size: params.batch_size ?? 5,
+      }),
+    }),
+
+  saveCharacters: (
+    characters: {
+      name: string;
+      description: string;
+      category: string;
+      attributes: Record<string, string>;
+    }[],
+  ) =>
+    fetchJson<{
+      total: number;
+      written: number;
+      skipped_duplicates: number;
+    }>('/api/generation/characters/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ characters }),
+    }),
+
   batchGenerateStart: (
-    type: 'anime' | 'anime_direct' | 'faceswap' | 'zimage' | 'imageedit' | 'video' | 'avatar',
+    type: 'anime' | 'anime_direct' | 'faceswap' | 'zimage' | 'imageedit' | 'video' | 'profile_video' | 'avatar',
     perCharacter = 10,
     category: string | null = null,
     width = 1024,
     height = 1536,
     seed = 0,
     editPrompt: string | null = null,
-    engine: 'smartstudio' | 'comfyui' = 'smartstudio',
+    engine: 'smartstudio' | 'comfyui' | 'dashscope' = 'smartstudio',
+    overwrite = false,
   ) =>
     fetchJson<{ status: string; job_id?: string; message?: string }>(
       '/api/generation/batch-generate',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, per_character: perCharacter, category, width, height, seed, edit_prompt: editPrompt, engine }),
+        body: JSON.stringify({ type, per_character: perCharacter, category, width, height, seed, edit_prompt: editPrompt, engine, overwrite }),
       }
     ),
 
@@ -115,8 +161,43 @@ export const api = {
       '/api/generation/batch-generate/jobs'
     ),
 
-  getIndex: () =>
-    fetchJson<Record<string, CharacterIndex>>('/api/index'),
+  comfyuiFreeVram: () =>
+    fetchJson<{ status: string; freed: number; total: number; errors?: string[] }>(
+      '/api/generation/comfyui/free-vram',
+      { method: 'POST' }
+    ),
+
+  audioCandidates: (characterId: number) =>
+    fetchJson<{ status: string; items: Array<{ id: number; filename: string; category: string; duration: number; oss_url: string; status: string }> }>(
+      `/api/audio/candidates/${characterId}`
+    ),
+
+  audioConfirm: (audioId: number, characterId: number) =>
+    fetchJson<{ status: string; voice_id?: string; message?: string }>(
+      '/api/audio/confirm',
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ audio_id: audioId, character_id: characterId }) }
+    ),
+
+  audioReject: (audioId: number) =>
+    fetchJson<{ status: string }>(
+      `/api/audio/reject/${audioId}`,
+      { method: 'POST' }
+    ),
+
+  audioRefreshCandidates: (characterId: number) =>
+    fetchJson<{ status: string; added: number }>(
+      `/api/audio/refresh-candidates/${characterId}`,
+      { method: 'POST' }
+    ),
+
+  audioBatchAssign: (category?: string, perCharacter = 3) =>
+    fetchJson<{ status: string; characters_processed: number; audio_assigned: number }>(
+      '/api/audio/batch-assign',
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category: category || null, per_character: perCharacter }) }
+    ),
+
+  getIndex: (showAll = true) =>
+    fetchJson<Record<string, CharacterIndex>>(`/api/index?show_all=${showAll}`),
 
   getCategories: () =>
     fetchJson<CategoryCount[]>('/api/characters/categories'),

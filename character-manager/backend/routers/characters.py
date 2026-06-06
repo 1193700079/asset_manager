@@ -27,27 +27,30 @@ def _filter_active_media(media_list):
 
 
 @router.get("", response_model=list[CharacterOut])
-async def list_characters(category: str | None = None):
+async def list_characters(category: str | None = None, show_all: bool = False):
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            status_filter = "" if show_all else "AND COALESCE(character_status, 'pending') = 'online'"
             if category:
                 cur.execute(
-                    """SELECT id, name, category, description, attributes, media,
+                    f"""SELECT id, name, category, description, attributes, media,
                               content_rating, sort_priority
                        FROM characters
                        WHERE (is_deleted IS NULL OR is_deleted = FALSE)
                          AND creator_id = 'official' AND category = %s
+                         {status_filter}
                        ORDER BY name""",
                     (category,),
                 )
             else:
                 cur.execute(
-                    """SELECT id, name, category, description, attributes, media,
+                    f"""SELECT id, name, category, description, attributes, media,
                               content_rating, sort_priority
                        FROM characters
                        WHERE (is_deleted IS NULL OR is_deleted = FALSE)
                          AND creator_id = 'official'
+                         {status_filter}
                        ORDER BY name"""
                 )
             rows = cur.fetchall()

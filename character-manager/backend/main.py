@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import psycopg2.extras
 from config import settings
 from database import init_pool, close_pool, get_conn, put_conn, set_data_source
-from routers import characters_router, media_router, reference_router, asset_library_router, generation_router, scripts_router, comfyui_single_router, avatar_router
+from routers import characters_router, media_router, reference_router, asset_library_router, generation_router, scripts_router, comfyui_single_router, avatar_router, audio_router, batch_generate_router
 from services import vfe_client, smartstudio_client, script_runner
 from services import batch_processing
 from services.supabase_storage import ensure_bucket_exists
@@ -28,6 +28,31 @@ def _parse_json(val):
 async def lifespan(app: FastAPI):
     init_pool()
     await ensure_bucket_exists()
+
+    # Ensure audio_library table exists
+    try:
+        conn = get_conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS audio_library (
+                        id SERIAL PRIMARY KEY,
+                        filename TEXT NOT NULL,
+                        original_path TEXT NOT NULL,
+                        category TEXT NOT NULL,
+                        duration FLOAT,
+                        file_hash TEXT UNIQUE NOT NULL,
+                        oss_url TEXT,
+                        oss_key TEXT,
+                        assigned_to INTEGER,
+                        created_at TIMESTAMP DEFAULT NOW()
+                    )
+                """)
+            conn.commit()
+        finally:
+            put_conn(conn)
+    except Exception as e:
+        print(f"[audio] table migration failed: {e}")
 
     # Load persisted batch jobs from disk so the UI can resume any that were
     # cut off by a previous crash/restart. Best-effort: never fatal.
@@ -72,6 +97,8 @@ app.include_router(generation_router)
 app.include_router(scripts_router)
 app.include_router(comfyui_single_router)
 app.include_router(avatar_router)
+app.include_router(batch_generate_router)
+app.include_router(audio_router)
 
 
 @app.middleware("http")
@@ -93,17 +120,19 @@ async def list_datasources():
 
 
 @app.get("/api/index")
-async def get_index():
+async def get_index(show_all: bool = False):
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            status_filter = "" if show_all else "AND COALESCE(character_status, 'pending') = 'online'"
             cur.execute(
-                """SELECT id, name, category, description, attributes, media,
+                f"""SELECT id, name, category, description, attributes, media,
                           content_rating, sort_priority, avatar_url, voice_id,
                           COALESCE(character_status, 'pending') as character_status
                    FROM characters
                    WHERE (is_deleted IS NULL OR is_deleted = FALSE)
                      AND creator_id = 'official'
+                     {status_filter}
                    ORDER BY name"""
             )
             chars = cur.fetchall()
