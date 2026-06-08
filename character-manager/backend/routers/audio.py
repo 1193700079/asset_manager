@@ -4,7 +4,8 @@ from pydantic import BaseModel
 
 import psycopg2.extras
 
-from database import get_conn, put_conn
+from database import get_conn, put_conn, get_data_source
+from services import voice_enrollment
 
 router = APIRouter(prefix="/api/audio", tags=["audio"])
 
@@ -234,3 +235,45 @@ async def batch_assign(data: BatchAssignRequest):
         }
     finally:
         put_conn(conn)
+
+
+class EnrollRequest(BaseModel):
+    character_id: int
+
+
+@router.post("/enroll")
+async def enroll_single(data: EnrollRequest):
+    """Enroll a single character's online audio via CosyVoice."""
+    ds = get_data_source()
+    logs: list[str] = []
+    result = voice_enrollment.enroll_character(
+        data.character_id, ds=ds, log_fn=logs.append
+    )
+    result["logs"] = logs
+    return result
+
+
+class EnrollBatchRequest(BaseModel):
+    character_ids: list[int] | None = None
+
+
+@router.post("/enroll-batch")
+async def enroll_batch(data: EnrollBatchRequest):
+    """Start batch voice enrollment for all online audio (or specific characters)."""
+    ds = get_data_source()
+    return voice_enrollment.start_batch(ds=ds, char_ids=data.character_ids)
+
+
+@router.get("/enroll-status")
+async def enroll_status():
+    """Get current batch enrollment status."""
+    status = voice_enrollment.get_batch_status()
+    if not status:
+        return {"status": "ok", "job": None}
+    return {"status": "ok", "job": status}
+
+
+@router.post("/enroll-stop")
+async def enroll_stop():
+    """Stop a running batch enrollment."""
+    return voice_enrollment.stop_batch()

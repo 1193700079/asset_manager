@@ -196,14 +196,20 @@ export const api = {
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category: category || null, per_character: perCharacter }) }
     ),
 
+  enrollVoice: (characterId: number) =>
+    fetchJson<{ status: string; voice_id?: string; message?: string; logs?: string[] }>(
+      '/api/audio/enroll',
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ character_id: characterId }) }
+    ),
+
   getIndex: (showAll = true) =>
     fetchJson<Record<string, CharacterIndex>>(`/api/index?show_all=${showAll}`),
 
-  getCategories: () =>
-    fetchJson<CategoryCount[]>('/api/characters/categories'),
+  getCategories: (showAll = true) =>
+    fetchJson<CategoryCount[]>(`/api/characters/categories?show_all=${showAll}`),
 
-  getCharacterList: () =>
-    fetchJson<CharacterListItem[]>('/api/characters/list'),
+  getCharacterList: (showAll = true) =>
+    fetchJson<CharacterListItem[]>(`/api/characters/list?show_all=${showAll}`),
 
   createCharacter: (data: { name: string; category?: string; description?: string }) =>
     fetchJson<{ status: string; id: number | null }>('/api/characters', {

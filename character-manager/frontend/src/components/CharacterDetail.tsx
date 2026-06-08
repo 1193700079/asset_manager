@@ -34,6 +34,8 @@ export default function CharacterDetail({ name, data, onRefresh, confirmEnabled 
   const [audioCandidates, setAudioCandidates] = useState<AudioCandidate[]>([]);
   const [loadingAudio, setLoadingAudio] = useState(false);
   const [showManualVoice, setShowManualVoice] = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
+  const [enrollResult, setEnrollResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   useEffect(() => {
     setVoiceUrl(data.voice_id || '');
@@ -81,6 +83,29 @@ export default function CharacterDetail({ name, data, onRefresh, confirmEnabled 
     } catch (e: any) {
       alert('刷新失败: ' + e.message);
     } finally { setLoadingAudio(false); }
+  };
+
+  const isCosyVoice = voiceUrl.trim().startsWith('cosyvoice-');
+
+  const handleEnroll = async () => {
+    setEnrolling(true);
+    setEnrollResult(null);
+    try {
+      const r = await api.enrollVoice(data.id);
+      if (r.status === 'ok') {
+        setEnrollResult({ ok: true, msg: `注册成功: ${r.voice_id}` });
+        onRefresh();
+      } else if (r.status === 'skipped') {
+        setEnrollResult({ ok: true, msg: '已注册，跳过' });
+      } else {
+        const logHint = r.logs?.slice(-3).join(' | ') || '';
+        setEnrollResult({ ok: false, msg: r.message || '注册失败' + (logHint ? ` (${logHint})` : '') });
+      }
+    } catch (e: any) {
+      setEnrollResult({ ok: false, msg: '注册异常: ' + e.message });
+    } finally {
+      setEnrolling(false);
+    }
   };
 
   const attrs = Object.entries(data.attributes || {})
@@ -136,10 +161,36 @@ export default function CharacterDetail({ name, data, onRefresh, confirmEnabled 
             </div>
             <div className="char-voice">
               <label>默认音频</label>
-              {voiceUrl.trim() && voiceUrl.startsWith('http') && (
+              {voiceUrl.trim() && voiceUrl.startsWith('http') && !isCosyVoice && (
                 <div className="char-voice-current">
                   <audio src={voiceUrl.trim()} controls preload="none" />
                   <span className="vc-status-tag online">已上线</span>
+                  <button onClick={handleEnroll} disabled={enrolling} className="vc-enroll-btn">
+                    {enrolling ? '注册中…' : '注册语音'}
+                  </button>
+                </div>
+              )}
+              {isCosyVoice && (
+                <div className="char-voice-current">
+                  <span className="vc-status-tag enrolled">已注册 CosyVoice</span>
+                  <span className="vc-voice-id">{voiceUrl.trim()}</span>
+                </div>
+              )}
+              {audioCandidates.filter(a => a.status === 'online').length > 0 && (
+                <div className="char-voice-online">
+                  {audioCandidates.filter(a => a.status === 'online').map(a => (
+                    <div key={a.id} className="voice-candidate online">
+                      <span className="vc-cat">[{a.category}]</span>
+                      <span className="vc-name" title={a.filename}>{a.filename.slice(0, 30)}</span>
+                      <audio src={a.oss_url} controls preload="none" />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {enrollResult && (
+                <div className={`vc-enroll-result ${enrollResult.ok ? 'ok' : 'fail'}`}>
+                  {enrollResult.msg}
+                  <button className="vc-enroll-close" onClick={() => setEnrollResult(null)}>×</button>
                 </div>
               )}
               {audioCandidates.filter(a => a.status === 'pending').length > 0 && (

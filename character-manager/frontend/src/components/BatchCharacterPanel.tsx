@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
 import './BatchCharacterPanel.css';
 
@@ -23,6 +23,46 @@ interface WriteResult {
   selected: number;
 }
 
+interface PreviewCache {
+  category: Category;
+  count: number;
+  batchSize: number;
+  characters: GenChar[];
+  createdAt: string;
+}
+
+const CACHE_KEY = 'batch_char_preview';
+
+const loadPreviewCache = (): PreviewCache | null => {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as PreviewCache;
+    if (!data || !Array.isArray(data.characters) || data.characters.length === 0) {
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+};
+
+const savePreviewCache = (data: PreviewCache) => {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+  } catch {
+    /* ignore quota / privacy mode errors */
+  }
+};
+
+const clearPreviewCache = () => {
+  try {
+    localStorage.removeItem(CACHE_KEY);
+  } catch {
+    /* ignore */
+  }
+};
+
 const CATEGORIES: { value: Category; label: string; sub: string }[] = [
   { value: 'girlfriend', label: 'Girlfriend', sub: '真人女性' },
   { value: 'boyfriend', label: 'Boyfriend', sub: '真人男性' },
@@ -45,6 +85,22 @@ export default function BatchCharacterPanel({ onBack, onRefresh }: Props) {
   const [elapsed, setElapsed] = useState<number>(0);
   const [result, setResult] = useState<WriteResult | null>(null);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const [restoredInfo, setRestoredInfo] = useState<{ count: number; createdAt: string } | null>(null);
+  const restoredRef = useRef(false);
+
+  // 组件挂载时尝试从 localStorage 恢复上次的预览
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    const cache = loadPreviewCache();
+    if (!cache) return;
+    setCategory(cache.category);
+    setCount(cache.count);
+    setBatchSize(cache.batchSize);
+    setPreview(cache.characters);
+    setSelected(new Set(cache.characters.map((_, i) => i)));
+    setRestoredInfo({ count: cache.characters.length, createdAt: cache.createdAt });
+  }, []);
 
   const allChecked = preview.length > 0 && selected.size === preview.length;
 
@@ -64,6 +120,7 @@ export default function BatchCharacterPanel({ onBack, onRefresh }: Props) {
   const handlePreview = async () => {
     setError('');
     setResult(null);
+    setRestoredInfo(null);
     setLoading(true);
     setPreview([]);
     setSelected(new Set());
@@ -79,6 +136,16 @@ export default function BatchCharacterPanel({ onBack, onRefresh }: Props) {
       setPreview(chars);
       // 默认全选，方便用户直接写入
       setSelected(new Set(chars.map((_, i) => i)));
+      // 持久化到 localStorage，避免离开页面后丢失
+      if (chars.length > 0) {
+        savePreviewCache({
+          category,
+          count,
+          batchSize,
+          characters: chars,
+          createdAt: new Date().toISOString(),
+        });
+      }
     } catch (e: any) {
       setError(e?.message || '生成失败，请检查后端服务与网络');
     } finally {
@@ -129,6 +196,9 @@ export default function BatchCharacterPanel({ onBack, onRefresh }: Props) {
       });
       // 写入完成后清空勾选，但保留预览，方便继续筛选/补写
       setSelected(new Set());
+      // 写入成功后清掉持久化缓存，避免下次进入再被恢复
+      clearPreviewCache();
+      setRestoredInfo(null);
       onRefresh?.();
     } catch (e: any) {
       setError(e?.message || '写入失败');
@@ -143,6 +213,8 @@ export default function BatchCharacterPanel({ onBack, onRefresh }: Props) {
     setSelected(new Set());
     setResult(null);
     setError('');
+    clearPreviewCache();
+    setRestoredInfo(null);
   };
 
   const renderAttr = (c: GenChar, key: string) => {
@@ -300,6 +372,22 @@ export default function BatchCharacterPanel({ onBack, onRefresh }: Props) {
           </div>
         </div>
       </div>
+
+      {restoredInfo && (
+        <div className="bcp-toast bcp-toast-info">
+          <span className="bcp-toast-dot" />
+          已恢复上次生成的 <b className="bcp-num-em">{restoredInfo.count}</b> 个角色预览
+          <span className="bcp-toast-meta">
+            （{new Date(restoredInfo.createdAt).toLocaleString()}）
+          </span>
+          <button
+            className="bcp-link-btn bcp-toast-action"
+            onClick={handleClear}
+          >
+            清除历史预览
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="bcp-toast bcp-toast-err">

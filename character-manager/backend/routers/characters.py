@@ -26,6 +26,17 @@ def _filter_active_media(media_list):
     return [m for m in media_list if not (isinstance(m, dict) and m.get("is_deleted"))]
 
 
+def _strip_pending_media(media_list):
+    """Remove media entries with media_status='pending' — used for production
+    (show_all=False) responses so ecjoy never renders unreviewed content."""
+    if not media_list or not isinstance(media_list, list):
+        return media_list
+    return [
+        m for m in media_list
+        if not (isinstance(m, dict) and m.get("media_status") == "pending")
+    ]
+
+
 @router.get("", response_model=list[CharacterOut])
 async def list_characters(category: str | None = None, show_all: bool = False):
     conn = get_conn()
@@ -56,21 +67,26 @@ async def list_characters(category: str | None = None, show_all: bool = False):
             rows = cur.fetchall()
         for r in rows:
             r["attributes"] = _parse_json(r["attributes"])
-            r["media"] = _filter_active_media(_parse_json(r["media"]))
+            media = _filter_active_media(_parse_json(r["media"]))
+            if not show_all:
+                media = _strip_pending_media(media)
+            r["media"] = media
         return rows
     finally:
         put_conn(conn)
 
 
 @router.get("/list", response_model=list[CharacterListItem])
-async def list_characters_simple():
+async def list_characters_simple(show_all: bool = False):
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            status_filter = "" if show_all else "AND COALESCE(character_status, 'pending') = 'online'"
             cur.execute(
-                """SELECT id, name, category FROM characters
+                f"""SELECT id, name, category FROM characters
                    WHERE (is_deleted IS NULL OR is_deleted = FALSE)
                      AND creator_id = 'official'
+                     {status_filter}
                    ORDER BY name"""
             )
             return cur.fetchall()
@@ -79,14 +95,16 @@ async def list_characters_simple():
 
 
 @router.get("/categories", response_model=list[CategoryCount])
-async def get_categories():
+async def get_categories(show_all: bool = False):
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            status_filter = "" if show_all else "AND COALESCE(character_status, 'pending') = 'online'"
             cur.execute(
-                """SELECT category, count(*) as count FROM characters
+                f"""SELECT category, count(*) as count FROM characters
                    WHERE (is_deleted IS NULL OR is_deleted = FALSE)
                      AND creator_id = 'official'
+                     {status_filter}
                    GROUP BY category ORDER BY count(*) DESC"""
             )
             return cur.fetchall()

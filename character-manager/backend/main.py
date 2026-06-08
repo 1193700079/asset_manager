@@ -177,22 +177,32 @@ async def get_index(show_all: bool = False):
             profile_videos = [m["url"] for m in published if m.get("type") == "video" and m.get("url")]
             swapface_images = [m["url"] for m in published if m.get("type") == "swapface_image" and m.get("url")]
 
-            # Per-media status maps
+            # Per-media status maps.
+            # Production (show_all=False) MUST NOT expose any pending entries —
+            # ecjoy frontend would render them otherwise. Admin UI (show_all=True)
+            # keeps the full map so reviewers can see pending items.
             media_status_map: dict[str, str] = {}
             for m in active:
                 if isinstance(m, dict) and m.get("url"):
-                    media_status_map[m["url"]] = m.get("media_status", "pending")
+                    status = m.get("media_status", "pending")
+                    if not show_all and status == "pending":
+                        continue
+                    media_status_map[m["url"]] = status
 
             # Pending (待选) media for the review section — only explicit 'pending'.
-            pending_media = [
-                {
-                    "url": m["url"],
-                    "type": m.get("type", "image"),
-                    "source": m.get("source", ""),
-                }
-                for m in active
-                if isinstance(m, dict) and m.get("url") and _is_pending(m)
-            ]
+            # Hidden entirely from production responses (show_all=False).
+            if show_all:
+                pending_media = [
+                    {
+                        "url": m["url"],
+                        "type": m.get("type", "image"),
+                        "source": m.get("source", ""),
+                    }
+                    for m in active
+                    if isinstance(m, dict) and m.get("url") and _is_pending(m)
+                ]
+            else:
+                pending_media = []
 
             trash_images = [m["url"] for m in trashed if m.get("type") == "image" and m.get("url")]
             trash_videos = [m["url"] for m in trashed if m.get("type") == "video" and m.get("url")]

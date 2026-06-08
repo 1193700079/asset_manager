@@ -376,6 +376,9 @@ async def poll_status(task_id: str):
         result_url = output.get("image_url") or output.get("video_url")
         error_message = output.get("task_message") or output.get("error_message") or ""
 
+        if task_status == "SUCCEEDED" and result_url:
+            result_url = await batch_processing._persist_url(result_url, task_id)
+
         print(f"[DEBUG poll_status] Updating DB: status={task_status}, error={error_message[:100]}")
 
         with conn.cursor() as cur:

@@ -692,7 +692,7 @@ export default function ImageBrowser({ onPick, annotationsVersion = 0, initialIm
     const handleLinkCharacter = useCallback(async () => {
         if (!selectedImage || !annotation) return;
         try {
-            const res = await fetch('http://localhost:9091/api/characters/list');
+            const res = await fetch('http://localhost:9091/api/characters/list?show_all=true');
             const chars: { id: number; name: string; category: string }[] = await res.json();
             const options = chars.map((c, i) => `${i + 1}. ${c.name} (${c.category})`).join('\n');
             const input = prompt(`选择角色 (输入序号):\n${options}`);

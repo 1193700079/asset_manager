@@ -228,6 +228,15 @@ def _fetch_characters(ds: str, category: str | None) -> list[dict]:
 
 
 def _append_media(ds: str, char_id: int, url: str, media_type: str, source: str, extra: dict | None = None):
+    if url and url.startswith("http"):
+        import requests as _req
+        try:
+            r = _req.head(url, timeout=10, allow_redirects=True)
+            if r.status_code >= 400:
+                raise RuntimeError(f"Generated URL not accessible (HTTP {r.status_code}): {url[:120]}")
+        except _req.RequestException as e:
+            raise RuntimeError(f"Generated URL unreachable: {url[:120]} ({type(e).__name__})")
+
     with _media_lock(ds, char_id):
         conn = get_conn_for(ds)
         try:
@@ -419,6 +428,49 @@ def _build_prompt(name: str, description, attributes) -> str:
     return ", ".join(lines)[:1500]
 
 
+async def _persist_url(url: str, task_id: str) -> str:
+    """Download a temporary URL and re-upload to permanent OSS.
+    Returns the permanent OSS URL, or the original URL if already permanent."""
+    from config import settings
+    own_domain = settings.oss_bucket + "." + settings.oss_endpoint.replace("https://", "").replace("http://", "")
+    if own_domain in url and "x-oss-expires" not in url:
+        return url
+
+    try:
+        import oss2, tempfile
+        ext = ".png"
+        if ".mp4" in url.split("?")[0]:
+            ext = ".mp4"
+        elif ".webm" in url.split("?")[0]:
+            ext = ".webm"
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=60)) as resp:
+                if resp.status != 200:
+                    print(f"[batch] WARN: download failed {resp.status}, using original URL")
+                    return url
+                data = await resp.read()
+
+        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+            tmp.write(data)
+            tmp_path = tmp.name
+
+        auth = oss2.Auth(settings.oss_access_key_id, settings.oss_access_key_secret)
+        bucket = oss2.Bucket(auth, settings.oss_endpoint, settings.oss_bucket)
+        filename = f"{task_id}{ext}"
+        oss_key = f"{settings.oss_prefix}{task_id}/{filename}"
+        bucket.put_object_from_file(oss_key, tmp_path)
+        os.unlink(tmp_path)
+
+        endpoint = settings.oss_endpoint.replace("https://", "").replace("http://", "")
+        permanent_url = f"https://{settings.oss_bucket}.{endpoint}/{oss_key}"
+        print(f"[batch] Persisted URL: {permanent_url}")
+        return permanent_url
+    except Exception as e:
+        print(f"[batch] WARN: persist_url failed ({e}), using original URL")
+        return url
+
+
 async def _run_and_wait(submit_coro) -> str:
     task_id = await submit_coro
     deadline = time.time() + POLL_TIMEOUT
@@ -430,6 +482,7 @@ async def _run_and_wait(submit_coro) -> str:
             url = out.get("image_url") or out.get("video_url")
             if not url:
                 raise RuntimeError("succeeded but no result url")
+            url = await _persist_url(url, task_id)
             return url
         if status == "FAILED":
             raise RuntimeError(out.get("task_message") or out.get("error_message") or "task failed")
@@ -785,14 +838,10 @@ async def _build_units(job: dict, ds: str) -> list[dict]:
             if not first_profile:
                 continue
             for _ in range(per):
-                try:
-                    vp = await dashscope_client.generate_video_prompt(first_profile)
-                except Exception:
-                    vp = "The person smiles gently, shifts their gaze naturally, with subtle head movement and soft hair sway. Cinematic, natural lighting."
                 units.append({
                     "char": ch,
                     "frame": first_profile,
-                    "video_prompt": vp,
+                    "video_prompt": None,
                     "frame_origin": "profile",
                 })
 
@@ -852,9 +901,15 @@ async def _process_unit(ds: str, btype: str, unit: dict, seed: int, w: int, h: i
                       {"frame_origin": unit["frame_origin"], "video_prompt": unit["video_prompt"], "engine": engine})
 
     elif btype == "profile_video":
-        url = await _gen_video(engine, unit["frame"], unit["video_prompt"], seed, is_stopping=is_stopping)
+        vp = unit.get("video_prompt")
+        if not vp:
+            try:
+                vp = await dashscope_client.generate_video_prompt(unit["frame"])
+            except Exception:
+                vp = "The person smiles gently, shifts their gaze naturally, with subtle head movement and soft hair sway. Cinematic, natural lighting."
+        url = await _gen_video(engine, unit["frame"], vp, seed, is_stopping=is_stopping)
         _append_media(ds, ch["id"], url, "video", "video_profile",
-                      {"frame_origin": "profile", "video_prompt": unit["video_prompt"], "engine": engine})
+                      {"frame_origin": "profile", "video_prompt": vp, "engine": engine})
 
     elif btype == "avatar":
         result = await avatar_service.generate_avatar(unit["src_image"])
