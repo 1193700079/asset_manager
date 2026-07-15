@@ -5,6 +5,7 @@ from urllib.parse import quote
 from fastapi import APIRouter
 from fastapi.responses import FileResponse, RedirectResponse, Response, StreamingResponse
 from pydantic import BaseModel
+from config import settings
 from services import vfe_client
 import time
 
@@ -155,7 +156,7 @@ def serve_image(path: str, w: int = 0):
     cleaned = path.lstrip("/\\")
     if cleaned.startswith("..") or os.path.isabs(cleaned):
         return {"error": "forbidden"}
-    url = "http://127.0.0.1:18022/api/images/serve?path=" + quote(cleaned, safe="/")
+    url = settings.vfe_url.rstrip("/") + "/api/images/serve?path=" + quote(cleaned, safe="/")
     if w and w >= 32:
         url += f"&w={int(w)}"
     try:
