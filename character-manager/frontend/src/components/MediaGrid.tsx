@@ -12,7 +12,9 @@ const STATUS_ICONS: Record<string, string> = { online: 'ðŸŸ¢', pre_release: 'ðŸŸ
 export const ossResize = (url: string, w: number, q = 80) =>
   /^https?:\/\//.test(url) && /\.(jpe?g|png|webp)(\?|$)/i.test(url)
     ? url + (url.includes('?') ? '&' : '?') + `x-oss-process=image/resize,w_${w}/format,jpg/quality,q_${q}`
-    : url;
+    : url.includes('/api/asset-library/serve?') && !url.includes('&w=')
+      ? url + `&w=${w}`  // serve 302s to OSS with resize applied upstream
+      : url;
 export const thumb = (url: string) => ossResize(url, 400, 75);
 
 const IMG_ERR =

@@ -1,4 +1,5 @@
 import os
+import urllib.error
 import urllib.request
 from urllib.parse import quote
 
@@ -159,10 +160,25 @@ def serve_image(path: str, w: int = 0):
     url = settings.vfe_url.rstrip("/") + "/api/images/serve?path=" + quote(cleaned, safe="/")
     if w and w >= 32:
         url += f"&w={int(w)}"
+
+    # VFE 302s OSS-backed items to a public OSS URL (with x-oss-process resize).
+    # Pass that redirect straight to the browser so bytes go OSS -> browser
+    # directly instead of being proxied through cm/frp. Local files (200) are
+    # still proxied.
+    class _NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            return None
+
+    opener = urllib.request.build_opener(_NoRedirect)
     try:
-        with urllib.request.urlopen(url, timeout=30) as r:
+        with opener.open(url, timeout=30) as r:
             data = r.read()
             ctype = r.headers.get("Content-Type", "image/jpeg")
+    except urllib.error.HTTPError as e:
+        loc = e.headers.get("Location") if e.headers else None
+        if e.code in (301, 302, 303, 307, 308) and loc:
+            return RedirectResponse(loc, status_code=302)
+        return Response(content=f"upstream fetch failed: HTTP {e.code}", status_code=502)
     except Exception as e:
         return Response(content=f"upstream fetch failed: {e}", status_code=502)
     return Response(content=data, media_type=ctype,
