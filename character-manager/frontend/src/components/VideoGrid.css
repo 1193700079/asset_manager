@@ -1,8 +1,14 @@
 .video-grid { columns: 100px; column-gap: 6px; }
 .video-card {
   position: relative; break-inside: avoid; margin-bottom: 8px;
-  background: #16213e; border-radius: 6px; overflow: hidden;
-  border: 1px solid #0f3460;
+  background: #1c1c20; border-radius: 2px; overflow: hidden;
+  border: 1px solid #2a2a35;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+.video-card:hover {
+  border-color: var(--cv-accent);
+  box-shadow: 0 0 18px var(--cv-accent-glow);
+  transform: translateY(-2px);
 }
 .video-card video {
   width: 100%; height: auto; display: block; cursor: pointer;
@@ -28,6 +34,6 @@
 .video-card:hover .card-hard-del { opacity: 1; }
 .video-card .card-hard-del:hover { background: rgba(220,40,40,1); }
 .card-name {
-  padding: 4px 6px; font-size: 10px; color: #aaa;
+  padding: 4px 6px; font-size: 10px; color: #8b8b9e;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }

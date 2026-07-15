@@ -7,7 +7,13 @@ export interface CharacterIndex {
   character_status: 'online' | 'pre_release' | 'pending';
   avatar_url: string;
   voice_id: string;
+  featured?: boolean;
+  tags?: string[];
   profile_images: string[];
+  paid_images?: string[];
+  costume_images?: string[];
+  scene_images?: string[];
+  prop_images?: string[];
   profile_videos: string[];
   generated_images: string[];
   all_images: string[];
@@ -16,7 +22,7 @@ export interface CharacterIndex {
   trash_generated: string[];
   trash_all: string[];
   media_status_map: Record<string, 'online' | 'pre_release' | 'pending'>;
-  pending_media: { url: string; type: string; source: string }[];
+  pending_media: { url: string; type: string; source: string; created_at?: string | null }[];
 }
 
 export interface CharacterListItem {

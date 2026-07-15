@@ -1,6 +1,187 @@
+/* ── Fonts (CyberVerse design language) ─────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&family=Noto+Serif+SC:wght@600;700;900&display=swap');
+
+/* ── Design tokens (ported from CyberVerse) ─────────────────────────── */
+:root {
+  --cv-base: #121214;
+  --cv-surface: #1c1c20;
+  --cv-elevated: #26262c;
+  --cv-hover: #2e2e36;
+  --cv-accent: #3b82f6;
+  --cv-accent-hover: #60a5fa;
+  --cv-accent-muted: #1e3a5f;
+  --cv-accent-glow: rgba(59, 130, 246, 0.15);
+  --cv-success: #22c55e;
+  --cv-success-muted: #162d1f;
+  --cv-warning: #f59e0b;
+  --cv-warning-muted: #2d2510;
+  --cv-danger: #ef4444;
+  --cv-danger-muted: #2d1515;
+  --cv-text: #f0f0f5;
+  --cv-text-secondary: #8b8b9e;
+  --cv-text-muted: #55556a;
+  --cv-border: #2a2a35;
+  --cv-border-subtle: #222228;
+  /* Neon accents for key live/status highlights */
+  --cv-cyan: #34e6f3;
+  --cv-rose: #ff5f89;
+  --cv-radius: 2px;
+  --cv-transition: 150ms ease;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: system-ui, -apple-system, sans-serif; background: #1a1a2e; color: #eee; }
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #16213e; }
-::-webkit-scrollbar-thumb { background: #0f3460; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #e94560; }
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--cv-base);
+  background-image:
+    linear-gradient(rgba(92, 109, 132, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(92, 109, 132, 0.10) 1px, transparent 1px);
+  background-size: 20px 20px;
+  color: var(--cv-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.cv-display-title {
+  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.cv-mono {
+  font-family: 'Azeret Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0;
+}
+
+/* ── Signature button: [ LABEL ] sharp monospace ────────────────────── */
+.cv-pi-button {
+  position: relative;
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45em;
+  border: 1px solid rgba(104, 115, 132, 0.58);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.018);
+  padding: 0 14px;
+  color: rgba(221, 225, 231, 0.78);
+  font-family: 'Azeret Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  transition: border-color var(--cv-transition), background-color var(--cv-transition), color var(--cv-transition), box-shadow var(--cv-transition);
+  cursor: pointer;
+}
+.cv-pi-button::before, .cv-pi-button::after { color: rgba(128, 157, 184, 0.9); font-weight: 500; }
+.cv-pi-button::before { content: "["; }
+.cv-pi-button::after { content: "]"; }
+.cv-pi-button:hover:not(:disabled) {
+  border-color: rgba(164, 176, 192, 0.72);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(245, 247, 250, 0.92);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055), 0 0 0 1px rgba(255, 255, 255, 0.025);
+}
+.cv-pi-button:focus-visible { outline: 2px solid rgba(139, 168, 194, 0.55); outline-offset: 2px; }
+.cv-pi-button:disabled { cursor: not-allowed; opacity: 0.42; }
+.cv-pi-button--primary {
+  border-color: rgba(59, 130, 246, 0.7);
+  background: rgba(59, 130, 246, 0.08);
+  color: rgba(180, 210, 255, 0.95);
+}
+.cv-pi-button--primary::before, .cv-pi-button--primary::after { color: rgba(96, 165, 250, 0.9); }
+.cv-pi-button--primary:hover:not(:disabled) {
+  border-color: rgba(96, 165, 250, 0.9);
+  background: rgba(59, 130, 246, 0.14);
+  color: #eaf2ff;
+}
+.cv-pi-button--danger {
+  border-color: rgba(239, 68, 68, 0.78);
+  background: rgba(239, 68, 68, 0.035);
+  color: rgba(255, 128, 128, 0.94);
+}
+.cv-pi-button--danger::before, .cv-pi-button--danger::after { color: rgba(255, 104, 104, 0.9); }
+.cv-pi-button--danger:hover:not(:disabled) {
+  border-color: rgba(255, 104, 104, 0.96);
+  background: rgba(239, 68, 68, 0.075);
+  color: rgba(255, 210, 210, 0.96);
+}
+.cv-pi-button--success {
+  border-color: rgba(34, 197, 94, 0.72);
+  background: rgba(34, 197, 94, 0.05);
+  color: rgba(150, 240, 180, 0.95);
+}
+.cv-pi-button--success::before, .cv-pi-button--success::after { color: rgba(74, 222, 128, 0.9); }
+.cv-pi-button--success:hover:not(:disabled) {
+  border-color: rgba(74, 222, 128, 0.95);
+  background: rgba(34, 197, 94, 0.1);
+}
+.cv-pi-button--warning {
+  border-color: rgba(245, 158, 11, 0.7);
+  background: rgba(245, 158, 11, 0.05);
+  color: rgba(250, 204, 130, 0.95);
+}
+.cv-pi-button--warning::before, .cv-pi-button--warning::after { color: rgba(251, 191, 36, 0.9); }
+.cv-pi-button--compact { min-height: 30px; padding: 0 11px; font-size: 11px; }
+.cv-pi-button--large { min-height: 44px; padding: 0 22px; }
+
+/* ── Segmented control (replaces tab strips) ────────────────────────── */
+.cv-pi-segment {
+  display: inline-flex;
+  border: 1px solid rgba(104, 115, 132, 0.5);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.018);
+  padding: 4px;
+  gap: 4px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  flex-wrap: wrap;
+}
+.cv-pi-segment-item {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: rgba(139, 139, 158, 0.9);
+  font-family: 'Azeret Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color var(--cv-transition), background-color var(--cv-transition), color var(--cv-transition);
+}
+.cv-pi-segment-item:not(.cv-pi-segment-item--active):hover {
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(221, 225, 231, 0.8);
+}
+.cv-pi-segment-item--active {
+  border-color: rgba(96, 165, 250, 0.45);
+  background: rgba(59, 130, 246, 0.12);
+  color: rgba(220, 235, 255, 0.96);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055);
+}
+
+/* ── Grid-background page container ─────────────────────────────────── */
+.bg-cv-base {
+  background-color: var(--cv-base);
+  background-image:
+    linear-gradient(rgba(92, 109, 132, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(92, 109, 132, 0.10) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--cv-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--cv-text-muted); }

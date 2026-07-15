@@ -196,7 +196,7 @@ async def batch_assign(data: BatchAssignRequest):
             cur.execute("""
                 SELECT c.id, c.name FROM characters c
                 WHERE (c.is_deleted IS NULL OR c.is_deleted = FALSE)
-                  AND c.creator_id = 'official'
+                  AND c.creator_id IN ('official', 'system')
                   AND c.category IN ('boyfriend', 'anime_male')
                   AND NOT EXISTS (
                     SELECT 1 FROM audio_library a

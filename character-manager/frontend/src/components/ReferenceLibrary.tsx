@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ossResize } from './MediaGrid';
 import type { RefImage } from '../types';
 import { api } from '../api/client';
 import './ReferenceLibrary.css';
@@ -35,7 +36,7 @@ export default function ReferenceLibrary({ characterId }: Props) {
   };
 
   const handleAdd = async (item: any) => {
-    const fullUrl = `http://localhost:8899${item.image_url}`;
+    const fullUrl = item.image_url;
     await api.addRefImage({
       character_id: characterId,
       image_url: fullUrl,
@@ -82,11 +83,11 @@ export default function ReferenceLibrary({ characterId }: Props) {
           {searchResults.length > 0 && (
             <div className="ref-search-results">
               {searchResults.map((item, i) => {
-                const fullUrl = `http://localhost:8899${item.image_url}`;
+                const fullUrl = item.image_url;
                 const isAdded = existingUrls.has(fullUrl);
                 return (
                   <div key={i} className={`ref-search-card ${isAdded ? 'added' : ''}`}>
-                    <img src={fullUrl} loading="lazy" />
+                    <img src={ossResize(fullUrl, 400, 70)} loading="lazy" />
                     <div className="ref-search-info">
                       <div className="ref-search-name">{item.video_name}</div>
                       {item.prompt && <div className="ref-search-prompt">{item.prompt}</div>}
@@ -109,7 +110,7 @@ export default function ReferenceLibrary({ characterId }: Props) {
           {refs.map(ref => (
             <div key={ref.id} className="ref-card">
               <button className="ref-remove" onClick={() => handleRemove(ref.id)}>✕</button>
-              <img src={ref.image_url} loading="lazy" />
+              <img src={ossResize(ref.image_url, 400, 70)} loading="lazy" />
               <div className="ref-info">
                 <div className="ref-name">{ref.image_url.split('/').pop()?.split('?')[0]}</div>
                 {ref.prompt && <div className="ref-prompt">{ref.prompt}</div>}

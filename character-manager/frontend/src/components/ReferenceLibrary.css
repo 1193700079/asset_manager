@@ -6,26 +6,26 @@
 .ref-search-bar { display: flex; gap: 8px; margin-bottom: 8px; }
 .ref-search-bar input {
   flex: 1; padding: 6px 10px;
-  background: #0f3460; border: 1px solid #1a3a6e;
-  color: #eee; border-radius: 4px; font-size: 13px;
+  background: #26262c; border: 1px solid #2a2a35;
+  color: #f0f0f5; border-radius: 4px; font-size: 13px;
 }
 .ref-search-bar button {
-  background: #4fc3f7; color: #000; border: none;
+  background: #34e6f3; color: #000; border: none;
   padding: 6px 14px; border-radius: 4px; cursor: pointer;
   font-size: 12px; font-weight: bold;
 }
-.ref-search-bar button:hover { background: #81d4fa; }
+.ref-search-bar button:hover { background: #60a5fa; }
 .ref-search-bar button:disabled { opacity: 0.5; }
 .ref-search-results { columns: 200px; column-gap: 8px; }
 .ref-search-card {
   break-inside: avoid; margin-bottom: 8px;
-  background: #16213e; border-radius: 6px; overflow: hidden;
-  border: 1px solid #0f3460; position: relative;
+  background: #1c1c20; border-radius: 6px; overflow: hidden;
+  border: 1px solid #26262c; position: relative;
 }
 .ref-search-card.added { opacity: 0.5; }
 .ref-search-card img { width: 100%; height: auto; display: block; }
 .ref-search-info { padding: 6px 8px; }
-.ref-search-name { font-size: 10px; color: #aaa; }
+.ref-search-name { font-size: 10px; color: #8b8b9e; }
 .ref-search-prompt {
   font-size: 10px; color: #8bc34a; margin-top: 2px;
   display: -webkit-box; -webkit-line-clamp: 2;
@@ -48,8 +48,8 @@
 .ref-list { columns: 200px; column-gap: 8px; }
 .ref-card {
   break-inside: avoid; margin-bottom: 8px;
-  background: #16213e; border-radius: 6px; overflow: hidden;
-  border: 1px solid #0f3460; position: relative;
+  background: #1c1c20; border-radius: 6px; overflow: hidden;
+  border: 1px solid #26262c; position: relative;
 }
 .ref-card img { width: 100%; height: auto; display: block; }
 .ref-remove {
@@ -62,7 +62,7 @@
 }
 .ref-card:hover .ref-remove { opacity: 1; }
 .ref-info { padding: 6px 8px; }
-.ref-name { font-size: 10px; color: #aaa; }
+.ref-name { font-size: 10px; color: #8b8b9e; }
 .ref-prompt {
   font-size: 10px; color: #8bc34a; margin-top: 2px;
   display: -webkit-box; -webkit-line-clamp: 2;

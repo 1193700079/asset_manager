@@ -102,8 +102,29 @@ def _center_crop_fallback(img: Image.Image) -> Image.Image:
 async def generate_avatar(image_url: str) -> dict:
     """Detect face, crop centered square, upload to Supabase Storage.
 
-    Returns {ok, avatar_url, face_found, filename} or {ok: False, error}.
+    Tries the vps141 Pro6000 GPU YOLO endpoint first; falls back to local YOLO
+    if it is unreachable. Returns {ok, avatar_url, face_found, filename}.
     """
+    # --- vps141 Pro6000 GPU path (preferred) ---
+    try:
+        from services import vps141_client
+        import uuid as _uuid
+        crop_url = await vps141_client.avatar(image_url)
+        import aiohttp as _aio
+        async with _aio.ClientSession() as _s:
+            async with _s.get(crop_url, timeout=_aio.ClientTimeout(total=60)) as _r:
+                if _r.status == 200:
+                    _bytes = await _r.read()
+                    _fn = f"{_uuid.uuid4().hex}.png"
+                    (OUTPUT_DIR / _fn).write_bytes(_bytes)
+                    try:
+                        _url = await upload_avatar(_bytes, _fn)
+                    except Exception:
+                        _url = f"/api/avatar/file/{_fn}"
+                    return {"ok": True, "avatar_url": _url, "face_found": True, "filename": _fn}
+    except Exception as _e:
+        print(f"[avatar] vps141 path failed, falling back to local YOLO: {_e}")
+
     try:
         img = _load_image(image_url)
     except Exception as e:

@@ -15,6 +15,8 @@ interface BatchItemResult {
     result: "annotated" | "skipped" | "error";
     reason?: string;
     pre_screened?: boolean;
+    video_prompt?: string;
+    material_type?: string;
 }
 
 type BatchState = "idle" | "running" | "done" | "aborted";
@@ -127,6 +129,8 @@ export default function ImageBatchAnalysis({ unannotatedCount, folders, onComple
                                 result: event.result,
                                 reason: event.reason,
                                 pre_screened: event.pre_screened,
+                                video_prompt: event.video_prompt,
+                                material_type: event.material_type,
                             }]);
                             if (event.pre_screened && event.result === "skipped") setPreScreened(n => n + 1);
                             if (event.result === "annotated") setAnnotated(n => n + 1);
@@ -306,6 +310,15 @@ export default function ImageBatchAnalysis({ unannotatedCount, folders, onComple
                                             <span className="batch-result-reason">
                                                 {r.pre_screened && <span style={{ color: '#ff9800', marginRight: 4 }}>⊘预筛选</span>}
                                                 {r.reason}
+                                            </span>
+                                        )}
+                                        {r.video_prompt && (
+                                            <span
+                                                className="batch-result-vprompt"
+                                                title={r.video_prompt}
+                                                style={{ display: 'block', marginTop: 2, color: '#4caf50', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}
+                                            >
+                                                🎬 {r.video_prompt}
                                             </span>
                                         )}
                                     </li>

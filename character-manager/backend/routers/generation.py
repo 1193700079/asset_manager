@@ -19,7 +19,8 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 import psycopg2.extras
 from database import get_conn, put_conn, get_data_source
-from services import smartstudio_client, batch_processing
+import uuid
+from services import smartstudio_client, batch_processing, vps141_client
 
 router = APIRouter(prefix="/api/generation", tags=["generation"])
 
@@ -77,6 +78,7 @@ class CreateGenerationRequest(BaseModel):
     resolution: str = "480p"
     seed: int = 0
     batch_count: int = 1
+    engine: str = "smartstudio"  # smartstudio | vps141
 
 
 class SaveGenerationRequest(BaseModel):
@@ -94,6 +96,7 @@ class RandomCardsRequest(BaseModel):
 
 
 class BatchGenerateRequest(BaseModel):
+    prompt_source: str | None = None  # None=素材库随机; "scenes"=内置魅力场景池
     type: str  # faceswap | zimage | imageedit | video | anime
     per_character: int = 10
     category: str | None = None
@@ -103,6 +106,7 @@ class BatchGenerateRequest(BaseModel):
     edit_prompt: str | None = None
     engine: str = "smartstudio"  # smartstudio | comfyui | dashscope
     overwrite: bool = False
+    material_type: str | None = None  # normal | spicy | None(all) — prompt pool filter for zimage/imageedit
 
 
 # ---------- Endpoints ----------
@@ -160,6 +164,46 @@ async def create_generation(data: CreateGenerationRequest):
     batch_count = max(1, min(data.batch_count, 10))
     task_ids: list[str] = []
     errors: list[str] = []
+
+    # --- vps141 Pro6000 synchronous path (t2i / image-edit): call, persist, store completed ---
+    # ponytail: do NOT hold a DB connection during the (slow) generation call —
+    # grab a fresh connection only for the short INSERT, or the pool drains and
+    # everything else (asset library, index) 500s while images generate.
+    if data.engine == "vps141":
+        for _ in range(batch_count):
+            try:
+                if data.task_type == "zimage":
+                    raw = await vps141_client.text_to_image(
+                        data.prompt, seed=data.seed, width=data.width, height=data.height)
+                elif data.task_type == "imageedit":
+                    raw = await vps141_client.image_edit(
+                        data.source_image, data.prompt, seed=data.seed)
+                else:
+                    errors.append(f"vps141 unsupported task_type: {data.task_type}")
+                    continue
+                result_url = await batch_processing._persist_url(raw, f"{uuid.uuid4().hex}_vps141")
+            except Exception as e:
+                errors.append(str(e))
+                continue
+            tid = uuid.uuid4().hex
+            conn = get_conn()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO media_generation_tasks
+                           (id, user_id, character_id, character_name, task_type,
+                            status, prompt, final_prompt, ref_image_url,
+                            resolution, duration, result_url, priority)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                        (tid, USER_ID, data.character_id, data.character_name, data.task_type,
+                         "completed", data.prompt, data.prompt, data.source_image or "",
+                         data.resolution, data.duration, result_url, 0),
+                    )
+                conn.commit()
+            finally:
+                put_conn(conn)
+            task_ids.append(tid)
+        return {"status": "ok" if task_ids else "error", "task_ids": task_ids, "errors": errors}
 
     conn = get_conn()
     try:
@@ -664,7 +708,8 @@ async def batch_generate_start(data: BatchGenerateRequest):
         ds, data.type, per_character=data.per_character, category=data.category,
         width=data.width, height=data.height, seed=data.seed,
         edit_prompt=data.edit_prompt, engine=data.engine,
-        overwrite=data.overwrite,
+        prompt_source=data.prompt_source,
+        overwrite=data.overwrite, material_type=data.material_type,
     )
 
 

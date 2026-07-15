@@ -1,4 +1,5 @@
 import './Modal.css';
+import { ossResize } from './MediaGrid';
 
 interface Props {
   url: string;
@@ -15,7 +16,7 @@ export default function Modal({ url, onClose }: Props) {
         {isVideo ? (
           <video src={url} controls autoPlay />
         ) : (
-          <img src={url} />
+          <img src={ossResize(url, 1600, 85)} />
         )}
       </div>
     </div>

@@ -2,18 +2,18 @@
 
 .bcp {
   --bcp-bg: #0e1730;
-  --bcp-surface: #16213e;
-  --bcp-surface-2: #0f3460;
-  --bcp-border: #1a3a6e;
+  --bcp-surface: #1c1c20;
+  --bcp-surface-2: #26262c;
+  --bcp-border: #2a2a35;
   --bcp-border-soft: #14305a;
   --bcp-text: #e7eef9;
-  --bcp-text-dim: #9bb4d4;
+  --bcp-text-dim: #8b8b9e;
   --bcp-text-mute: #6f87a8;
-  --bcp-accent: #4fc3f7;
+  --bcp-accent: #34e6f3;
   --bcp-accent-2: #3498db;
-  --bcp-pink: #e94560;
-  --bcp-green: #2ecc71;
-  --bcp-amber: #f1c40f;
+  --bcp-pink: #3b82f6;
+  --bcp-green: #4ade80;
+  --bcp-amber: #fbbf24;
 
   padding: 24px 28px 64px;
   max-width: 1280px;
@@ -60,7 +60,7 @@
   margin: 0;
   font-size: 22px;
   letter-spacing: 0.4px;
-  background: linear-gradient(120deg, #fff 0%, #4fc3f7 90%);
+  background: linear-gradient(120deg, #fff 0%, #34e6f3 90%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

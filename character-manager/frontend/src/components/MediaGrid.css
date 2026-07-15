@@ -1,15 +1,20 @@
 .media-grid { columns: 90px; column-gap: 6px; }
 .media-card {
   position: relative; break-inside: avoid; margin-bottom: 8px;
-  background: #16213e; border-radius: 6px; overflow: hidden;
-  border: 1px solid #0f3460;
+  background: #1c1c20; border-radius: 2px; overflow: hidden;
+  border: 1px solid #2a2a35;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+.media-card:hover {
+  border-color: var(--cv-accent);
+  box-shadow: 0 0 18px var(--cv-accent-glow);
 }
 .media-card img {
   width: 100%; height: auto; display: block; cursor: pointer;
 }
 .card-badge {
   position: absolute; top: 4px; left: 4px;
-  background: rgba(15,52,96,0.85); color: #eee;
+  background: rgba(15,52,96,0.85); color: #f0f0f5;
   padding: 2px 6px; border-radius: 3px; font-size: 10px;
 }
 .card-del {
@@ -41,11 +46,11 @@
 }
 .media-card:hover .card-avatar-btn { opacity: 1; }
 .card-name {
-  padding: 4px 6px; font-size: 10px; color: #aaa;
+  padding: 4px 6px; font-size: 10px; color: #8b8b9e;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.empty { color: #666; font-size: 14px; padding: 40px 0; }
-.media-card.trashed { opacity: 0.6; border-color: #e94560; }
+.empty { color: #55556a; font-size: 14px; padding: 40px 0; }
+.media-card.trashed { opacity: 0.6; border-color: #3b82f6; }
 .card-restore {
   position: absolute; top: 4px; right: 4px;
   background: rgba(46,204,113,0.9); color: #fff; border: none;
@@ -56,3 +61,52 @@
 }
 .media-card.trashed:hover .card-restore { opacity: 1; }
 .media-card.trashed:hover .card-del { opacity: 0; }
+
+/* batch select toolbar (added for ecjoy-tiktok batch delete) */
+.media-toolbar { display:flex; gap:8px; align-items:center; margin:6px 0; flex-wrap:wrap; }
+.mt-btn { background:#1f2a44; color:#cfe; border:1px solid #2c3b5e; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:12px; }
+.mt-btn:disabled { opacity:.4; cursor:not-allowed; }
+.mt-btn.mt-danger { background:#5a1f2a; color:#ffd; border-color:#7a2c3b; }
+.mt-count { font-size:12px; color:#9ab; }
+.media-card { position:relative; }
+.media-card.selected { outline:3px solid #4af; outline-offset:-3px; }
+.card-check { position:absolute; top:6px; left:6px; width:18px; height:18px; z-index:5; cursor:pointer; }
+
+/* pending selection */
+.pending-card { position: relative; }
+.pending-card.selected { outline: 3px solid #4af; outline-offset: -3px; }
+.pending-card .card-check { position: absolute; top: 6px; right: 6px; left: auto; width: 18px; height: 18px; z-index: 5; cursor: pointer; }
+
+/* 付费按钮 hover 显示，同其它角标 */
+.card-paid-btn {
+  position: absolute; top: 30px; right: 28px;
+  background: rgba(240,180,40,0.95); color: #3a2c00; border: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.2s;
+}
+.media-card:hover .card-paid-btn { opacity: 1; }
+.card-paid-btn:hover { background: rgba(255,200,60,1); }
+
+/* 付费卡「转回 Profile」按钮，hover 显示 */
+.card-tofree-btn {
+  position: absolute; top: 30px; right: 28px;
+  background: rgba(52,152,219,0.92); color: #fff; border: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.2s;
+}
+.media-card:hover .card-tofree-btn { opacity: 1; }
+.card-tofree-btn:hover { background: rgba(52,152,219,1); }
+
+.media-more { text-align: center; padding: 12px; color: #8b8b9e; font-size: 12px; }
+
+.card-avatar-btn {
+  position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+  background: rgba(60, 120, 240, 0.85); color: #fff; border: none;
+  border-radius: 6px; width: 26px; height: 26px; cursor: pointer; font-size: 14px;
+  opacity: 0; transition: opacity 0.2s; z-index: 3;
+}
+.media-card:hover .card-avatar-btn { opacity: 1; }

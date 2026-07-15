@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { ossResize } from './MediaGrid';
 import type { TagCloud, VFESearchItem } from '../types';
 import { api } from '../api/client';
 import Modal from './Modal';
 import './AssetLibrary.css';
 
-const VFE_BASE = 'http://localhost:8899';
 const PAGE_SIZE = 50;
 
 const DIM_LABELS: Record<string, string> = {
@@ -39,25 +39,43 @@ export default function AssetLibrary({ onClose }: Props) {
   const [fullDimTags, setFullDimTags] = useState<Record<string, { tag: string; count: number }[]>>({});
   const [dimLoading, setDimLoading] = useState<Set<string>>(new Set());
   const [currentOffset, setCurrentOffset] = useState(0);
+  const [materialType, setMaterialType] = useState<'spicy' | 'normal'>('spicy');
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  // --- Initial load: tag cloud (lightweight, min_count=3) ---
+  // --- Load tag cloud (lightweight, min_count=3); re-runs on library switch ---
   useEffect(() => {
-    api.getTagCloud(3)
+    setLoading(true);
+    api.getTagCloud(3, materialType)
       .then(data => {
         if (data.error) setError('标签云加载失败: ' + data.error);
         setTagCloud(data);
       })
       .catch(e => setError('无法连接后端: ' + e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [materialType]);
+
+  // --- Switch between the normal / NSFW asset libraries ---
+  const switchMaterial = (mt: 'spicy' | 'normal') => {
+    if (mt === materialType) return;
+    setActiveFilters([]);
+    setResults([]);
+    setTotalResults(0);
+    setExpandedDims(new Set());
+    setFullDimTags({});
+    setDimSearch({});
+    setCurrentOffset(0);
+    setSearchQuery('');
+    setError(null);
+    setTagCloud(null);
+    setMaterialType(mt);
+  };
 
   // --- Lazy load full tags for a dimension when expanding ---
   const expandDim = async (dim: string) => {
     if (expandedDims.has(dim)) return;
     setDimLoading(prev => new Set(prev).add(dim));
     try {
-      const data = await api.getDimTags(dim);
+      const data = await api.getDimTags(dim, 1, materialType);
       if (data.tags.length > 0) {
         setFullDimTags(prev => ({ ...prev, [dim]: data.tags }));
       }
@@ -81,6 +99,7 @@ export default function AssetLibrary({ onClose }: Props) {
         tag: filter.tag,
         limit: PAGE_SIZE,
         offset,
+        materialType,
       });
       const items = data.items || [];
       if (append) {
@@ -101,7 +120,7 @@ export default function AssetLibrary({ onClose }: Props) {
       setLoadingResults(false);
       setLoadingMore(false);
     }
-  }, []);
+  }, [materialType]);
 
   const toggleFilter = (dim: string, tag: string) => {
     const idx = activeFilters.findIndex(f => f.dim === dim && f.tag === tag);
@@ -197,6 +216,16 @@ export default function AssetLibrary({ onClose }: Props) {
       <div className="lib-panel">
         <div className="lib-header">
           <h2>素材库</h2>
+          <div className="lib-mat-toggle cv-pi-segment">
+            <button
+              className={`cv-pi-segment-item ${materialType === 'spicy' ? 'cv-pi-segment-item--active' : ''}`}
+              onClick={() => switchMaterial('spicy')}
+            >NSFW</button>
+            <button
+              className={`cv-pi-segment-item ${materialType === 'normal' ? 'cv-pi-segment-item--active' : ''}`}
+              onClick={() => switchMaterial('normal')}
+            >正常</button>
+          </div>
           <span className="lib-total">
             {tagCloud ? (
               tagCloud._full_count
@@ -289,7 +318,7 @@ export default function AssetLibrary({ onClose }: Props) {
             </div>
             <div className="lib-results" ref={resultsRef}>
               {results.map((item, i) => {
-                const imgUrl = VFE_BASE + item.image_url;
+                const imgUrl = item.image_url;
                 const dimTags = Object.entries(item.dimensions || {})
                   .flatMap(([, tags]) => (Array.isArray(tags) ? tags.slice(0, 2) : []));
                 const promptId = `prompt-${i}`;
@@ -322,7 +351,7 @@ export default function AssetLibrary({ onClose }: Props) {
                       </button>
                     </div>
                     <img
-                      src={imgUrl}
+                      src={ossResize(imgUrl, 400, 70)}
                       loading="lazy"
                       onClick={() => setModalUrl(imgUrl)}
                     />

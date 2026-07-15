@@ -287,7 +287,7 @@ def auto_assign_audio(conn):
             SELECT id, name, category, attributes->>'Ethnicity' as ethnicity
             FROM characters
             WHERE (is_deleted IS NULL OR is_deleted = FALSE)
-              AND creator_id = 'official'
+              AND creator_id IN ('official', 'system')
               AND voice_id IS NULL
             ORDER BY category, name
         """)

@@ -1,0 +1,55 @@
+.settings-page { max-width: 760px; margin: 0 auto; padding: 32px 24px 60px; }
+.settings-title { font-size: 22px; color: var(--cv-text); margin-bottom: 6px; }
+.settings-subtitle { font-size: 13px; color: var(--cv-text-muted); margin-bottom: 28px; }
+
+.settings-sections { display: flex; flex-direction: column; gap: 20px; }
+.settings-section {
+  background: var(--cv-surface); border: 1px solid var(--cv-border);
+  border-radius: var(--cv-radius); padding: 22px;
+}
+.settings-section-title {
+  font-size: 14px; font-weight: 600; color: var(--cv-text); margin-bottom: 8px;
+}
+.settings-section-hint { font-size: 12px; color: var(--cv-text-muted); margin-bottom: 16px; }
+
+.settings-field { display: block; }
+.settings-label {
+  display: block; font-size: 13px; color: var(--cv-text-secondary); margin-bottom: 7px;
+}
+.settings-input {
+  width: 100%; height: 42px; padding: 0 14px;
+  background: var(--cv-elevated); border: 1px solid var(--cv-border);
+  border-radius: var(--cv-radius); color: var(--cv-text); font-size: 14px;
+  transition: border-color var(--cv-transition), box-shadow var(--cv-transition);
+}
+.settings-input:focus {
+  outline: none; border-color: var(--cv-accent);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+/* Toggle row */
+.settings-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.settings-toggle-text { display: flex; flex-direction: column; gap: 4px; }
+.settings-toggle-label { font-size: 14px; color: var(--cv-text); }
+.settings-toggle-hint { font-size: 12px; color: var(--cv-text-muted); }
+.settings-switch {
+  position: relative; flex-shrink: 0;
+  width: 44px; height: 24px; border-radius: 12px;
+  background: var(--cv-elevated); border: 1px solid var(--cv-border);
+  cursor: pointer; transition: background var(--cv-transition), border-color var(--cv-transition);
+}
+.settings-switch.on { background: rgba(34, 197, 94, 0.25); border-color: var(--cv-success); }
+.settings-switch-knob {
+  position: absolute; top: 2px; left: 2px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--cv-text-muted); transition: transform 0.2s, background 0.2s;
+}
+.settings-switch.on .settings-switch-knob { transform: translateX(20px); background: var(--cv-success); }
+
+/* Info grid */
+.settings-info-grid {
+  display: grid; grid-template-columns: 130px 1fr; gap: 10px 16px;
+  font-size: 12px;
+}
+.settings-info-key { color: var(--cv-text-muted); text-transform: uppercase; }
+.settings-info-val { color: var(--cv-text-secondary); word-break: break-all; }

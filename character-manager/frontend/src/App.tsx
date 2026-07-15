@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { CharacterIndex, CategoryCount } from './types';
-import { api, getDataSource, setDataSource, getConfirmEnabled, setConfirmEnabled } from './api/client';
+import { api, getDataSource, setDataSource, getConfirmEnabled, setConfirmEnabled, getHardDeleteEnabled, setHardDeleteEnabled, getToken, getCurrentUser, clearAuth } from './api/client';
 import { useHashRoute } from './hooks/useHashRoute';
 import Sidebar from './components/Sidebar';
 import CharacterDetail from './components/CharacterDetail';
 import AssetLibrary from './components/AssetLibrary';
 import GlobalBatchView from './components/GlobalBatchView';
 import BatchCharacterPanel from './components/BatchCharacterPanel';
+import CharacterCreate from './components/CharacterCreate';
+import Settings from './components/Settings';
+import AuthGate from './components/AuthGate';
 import './App.css';
 
 export default function App() {
@@ -15,6 +18,8 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [sources, setSources] = useState<string[]>([]);
   const [confirmEnabled, setConfirmEnabledState] = useState<boolean>(getConfirmEnabled());
+  const [allowHardDelete, setAllowHardDeleteState] = useState<boolean>(getHardDeleteEnabled());
+  const [authUser, setAuthUser] = useState<string>(getCurrentUser());
   const { route, navigate } = useHashRoute();
 
   // ── Derive UI state from the URL hash ───────────────────────────────
@@ -24,6 +29,8 @@ export default function App() {
   const showLibrary = route.view === 'library';
   const showGlobalBatch = route.view === 'batch';
   const showBatchChar = route.view === 'batch-char';
+  const showCreate = route.view === 'create';
+  const showSettings = route.view === 'settings';
 
   // Data source: route.ds wins, else localStorage, else default
   const dataSource = route.dataSource || getDataSource();
@@ -48,11 +55,29 @@ export default function App() {
     }
   }, []);
 
+  // Cheap refresh for the detail view: refetch only the current character and
+  // merge it into the index, instead of rebuilding all ~439 (loadData).
+  const refreshOne = useCallback(async (charName: string) => {
+    if (!charName) return;
+    try {
+      const one = await api.getCharacterIndex(charName);
+      setIndex(prev => ({ ...prev, ...one }));
+    } catch (e) {
+      console.error('refreshOne failed:', e);
+    }
+  }, []);
+
   useEffect(() => { loadData(); }, [loadData]);
 
   useEffect(() => {
     api.getDataSources()
-      .then(r => setSources(r.sources))
+      .then(r => {
+        setSources(r.sources);
+        if (!r.sources.includes(getDataSource())) {
+          setDataSource(r.default);
+          window.location.reload();
+        }
+      })
       .catch(e => console.error('Failed to load data sources:', e));
   }, []);
 
@@ -89,6 +114,23 @@ export default function App() {
   const handleOpenBatchChar = useCallback(() => {
     navigate({ view: 'batch-char' });
   }, [navigate]);
+
+  const handleOpenCreate = useCallback(() => {
+    navigate({ view: 'create', name: null });
+  }, [navigate]);
+
+  const handleOpenSettings = useCallback(() => {
+    navigate({ view: 'settings', name: null });
+  }, [navigate]);
+
+  const handleGoHome = useCallback(() => {
+    navigate({ view: 'home', name: null });
+  }, [navigate]);
+
+  const handleCharacterCreated = useCallback(async (name: string) => {
+    await loadData();
+    navigate({ view: 'character', name });
+  }, [loadData, navigate]);
 
   const handleBackFromBatch = useCallback(() => {
     navigate({ view: 'home' });
@@ -131,12 +173,19 @@ export default function App() {
     setConfirmEnabledState(enabled);
   }, []);
 
+  const handleToggleHardDelete = useCallback((enabled: boolean) => {
+    setHardDeleteEnabled(enabled);
+    setAllowHardDeleteState(enabled);
+  }, []);
+
   const filteredNames = useMemo(
     () => Object.keys(index)
       .filter(n => {
         const c = index[n]!;
         if (activeCat === 'featured') {
-          if (![310, 369, 293, 287].includes(c.id)) return false;
+          if (!c.featured) return false;
+        } else if (activeCat && activeCat.startsWith('tag:')) {
+          if (!(c.tags || []).includes(activeCat.slice(4))) return false;
         } else if (activeCat && c.category !== activeCat) {
           return false;
         }
@@ -161,6 +210,18 @@ export default function App() {
 
   const activeChar = resolvedName ? index[resolvedName] : null;
 
+  const viewLabel = showGlobalBatch ? '批处理 / Batch'
+    : showBatchChar ? '批量生成 / Generate'
+    : showLibrary ? '素材库 / Library'
+    : showCreate ? '新建角色 / Create'
+    : showSettings ? '设置 / Settings'
+    : resolvedName ? resolvedName
+    : '总览 / Overview';
+
+  if (!authUser || !getToken()) {
+    return <AuthGate onAuthed={setAuthUser} />;
+  }
+
   return (
     <div className="app">
       <Sidebar
@@ -180,6 +241,7 @@ export default function App() {
         onOpenLibrary={handleOpenLibrary}
         onOpenGlobalBatch={handleOpenGlobalBatch}
         onOpenBatchChar={handleOpenBatchChar}
+        onOpenCreate={handleOpenCreate}
         onCreateCharacter={handleCreateCharacter}
         onDeleteCharacter={handleDeleteCharacter}
         onClearCharacter={handleClearCharacter}
@@ -187,23 +249,70 @@ export default function App() {
         onToggleConfirm={handleToggleConfirm}
       />
       <div className="main">
-        {showGlobalBatch ? (
-          <GlobalBatchView onBack={handleBackFromBatch} onRefresh={loadData} />
-        ) : showBatchChar ? (
-          <BatchCharacterPanel onBack={handleBackFromBatch} onRefresh={loadData} />
-        ) : activeChar && resolvedName ? (
-          <CharacterDetail
-            name={resolvedName}
-            data={activeChar}
-            onRefresh={loadData}
-            confirmEnabled={confirmEnabled}
-          />
-        ) : (
-          <div className="empty-state">
-            <h1>Select a character</h1>
-            <p>{loading ? 'Loading...' : `${Object.keys(index).length} characters available`}</p>
+        <div className="cm-header">
+          <button className="cm-header-brand" onClick={handleGoHome} title="返回总览">
+            <span className="cm-header-logo">CYPHER<span className="accent">·CM</span></span>
+            <span className="cm-header-tag">Character Manager</span>
+          </button>
+          <div className="cm-header-view">{viewLabel}</div>
+          <div className="cm-header-spacer" />
+          <div className="cm-header-status">
+            <span className="cm-header-dot" />
+            {dataSource}
           </div>
-        )}
+          <div className="cm-header-status" title="当前登录用户" style={{ gap: 6 }}>
+            <span style={{ opacity: 0.7 }}>👤</span>{authUser}
+            <button
+              onClick={() => { clearAuth(); setAuthUser(''); }}
+              title="登出"
+              style={{ marginLeft: 6, background: 'transparent', border: '1px solid #445', color: '#9ab', borderRadius: 4, cursor: 'pointer', fontSize: 11, padding: '1px 6px' }}
+            >登出</button>
+          </div>
+          <button
+            className={`cm-header-gear ${showSettings ? 'active' : ''}`}
+            onClick={handleOpenSettings}
+            title="设置"
+            aria-label="设置"
+          >⚙</button>
+        </div>
+        <div className="main-body">
+          {showSettings ? (
+            <Settings
+              dataSource={dataSource}
+              sources={sources}
+              onDataSourceChange={handleDataSourceChange}
+              confirmEnabled={confirmEnabled}
+              onToggleConfirm={handleToggleConfirm}
+              allowHardDelete={allowHardDelete}
+              onToggleHardDelete={handleToggleHardDelete}
+            />
+          ) : showCreate ? (
+            <CharacterCreate
+              categories={categories}
+              onBack={handleGoHome}
+              onCreated={handleCharacterCreated}
+            />
+          ) : showGlobalBatch ? (
+            <GlobalBatchView onBack={handleBackFromBatch} onRefresh={loadData} />
+          ) : showBatchChar ? (
+            <BatchCharacterPanel onBack={handleBackFromBatch} onRefresh={loadData} />
+          ) : activeChar && resolvedName ? (
+            <CharacterDetail
+              key={resolvedName}
+              name={resolvedName}
+              data={activeChar}
+              categories={categories}
+              onRefresh={() => refreshOne(resolvedName)}
+              confirmEnabled={confirmEnabled}
+              allowHardDelete={allowHardDelete}
+            />
+          ) : (
+            <div className="empty-state">
+              <h1>Select a character</h1>
+              <p>{loading ? 'Loading...' : `${Object.keys(index).length} characters available`}</p>
+            </div>
+          )}
+        </div>
       </div>
       {showLibrary && (
         <AssetLibrary onClose={handleCloseLibrary} />

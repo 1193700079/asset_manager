@@ -15,7 +15,7 @@ import { useState, useEffect, useCallback } from 'react';
  * Exposes `route` (parsed state) and `navigate` (push new hash).
  */
 export interface RouteState {
-  view: 'home' | 'character' | 'library' | 'batch' | 'batch-char';
+  view: 'home' | 'character' | 'library' | 'batch' | 'batch-char' | 'create' | 'settings';
   name: string | null;
   category: string | null;
   query: string;
@@ -64,6 +64,12 @@ function parseHash(hash: string): RouteState {
   if (path === 'batch-char') {
     return { view: 'batch-char', name: null, category, query, dataSource };
   }
+  if (path === 'new') {
+    return { view: 'create', name: null, category, query, dataSource };
+  }
+  if (path === 'settings') {
+    return { view: 'settings', name: null, category, query, dataSource };
+  }
   return { ...EMPTY, category, query, dataSource };
 }
 
@@ -78,6 +84,8 @@ function buildHash(state: RouteState): string {
   if (state.view === 'library') return `#/library${q}`;
   if (state.view === 'batch') return `#/batch${q}`;
   if (state.view === 'batch-char') return `#/batch-char${q}`;
+  if (state.view === 'create') return `#/new${q}`;
+  if (state.view === 'settings') return `#/settings${q}`;
   if (state.view === 'character' && state.name) {
     return `#/c/${encodeURIComponent(state.name)}${q}`;
   }

@@ -1,5 +1,100 @@
 .app { display: flex; min-height: 100vh; }
-.main { margin-left: 280px; padding: 20px; flex: 1; }
-.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; color: #666; }
-.empty-state h1 { font-size: 24px; margin-bottom: 8px; }
-.empty-state p { font-size: 14px; }
+
+.main {
+  margin-left: 280px;
+  flex: 1;
+  min-width: 0;
+  background-color: var(--cv-base);
+  background-image:
+    linear-gradient(rgba(92, 109, 132, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(92, 109, 132, 0.10) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* ── CyberVerse-style top header ────────────────────────────────────── */
+.cm-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px;
+  background: rgba(28, 28, 32, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--cv-border-subtle);
+}
+.cm-header-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.cm-header-brand:hover .cm-header-logo { color: var(--cv-accent-hover); }
+.cm-header-logo {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--cv-text);
+  letter-spacing: 0.5px;
+}
+.cm-header-logo .accent { color: var(--cv-accent); }
+.cm-header-tag {
+  font-family: 'Azeret Mono', ui-monospace, monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--cv-text-muted);
+}
+.cm-header-view {
+  font-family: 'Azeret Mono', ui-monospace, monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--cv-text-secondary);
+  padding-left: 16px;
+  border-left: 1px solid var(--cv-border);
+}
+.cm-header-spacer { flex: 1; }
+.cm-header-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: 'Azeret Mono', ui-monospace, monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--cv-text-secondary);
+}
+.cm-header-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--cv-success);
+  box-shadow: 0 0 6px var(--cv-success);
+}
+.cm-header-gear {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; margin-left: 4px;
+  background: none; border: 1px solid var(--cv-border); border-radius: var(--cv-radius);
+  color: var(--cv-text-secondary); font-size: 15px; cursor: pointer;
+  transition: border-color var(--cv-transition), color var(--cv-transition), background var(--cv-transition);
+}
+.cm-header-gear:hover { border-color: var(--cv-accent); color: var(--cv-text); }
+.cm-header-gear.active { border-color: var(--cv-accent); color: var(--cv-accent-hover); background: rgba(59, 130, 246, 0.12); }
+
+.main-body { padding: 20px; }
+
+.empty-state {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 60vh; color: var(--cv-text-muted);
+}
+.empty-state h1 {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 26px; margin-bottom: 10px; color: var(--cv-text-secondary);
+}
+.empty-state p {
+  font-family: 'Azeret Mono', ui-monospace, monospace;
+  font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;
+}

@@ -25,7 +25,7 @@ cur.execute("""
     SELECT c.id, c.name, c.category, c.attributes->>'Ethnicity' as ethnicity
     FROM characters c
     WHERE (c.is_deleted IS NULL OR c.is_deleted = FALSE)
-      AND c.creator_id = 'official'
+      AND c.creator_id IN ('official', 'system')
       AND (c.voice_id IS NULL OR c.voice_id NOT LIKE 'http%%')
       AND NOT EXISTS (
           SELECT 1 FROM audio_library a WHERE a.assigned_to = c.id AND a.status IN ('pending','online')

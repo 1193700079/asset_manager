@@ -144,3 +144,53 @@ async def generate_video_prompt(image_url: str) -> str:
         return "The person smiles gently, shifts their gaze naturally, with subtle head movement and soft hair sway. Cinematic, natural lighting."
 
     return content
+
+
+FACESWAP_QA_SYSTEM = """You are an image quality inspector for AI face-swap results.
+Judge only whether the face matches the body naturally.
+Reject if there is obvious face/body skin tone mismatch, black head with white body, white head with dark body, unnatural face boundary, pasted face, wrong lighting/color between face and body, or severe face artifacts.
+Return strict JSON only: {"ok": true|false, "reason": "short reason", "fix_prompt": "short edit prompt if not ok"}.
+"""
+
+
+async def judge_faceswap_quality(image_url: str) -> dict:
+    """Use qwen3.7-plus VL to detect bad face/body mismatch."""
+    if not settings.dashscope_api_key:
+        return {"ok": True, "reason": "DASHSCOPE_API_KEY not configured", "fix_prompt": ""}
+
+    payload = {
+        "model": QWEN_VL_MODEL,
+        "messages": [
+            {"role": "system", "content": FACESWAP_QA_SYSTEM},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": image_url}},
+                    {"type": "text", "text": "Check this face-swap image. Is the face/body skin tone and lighting consistent?"},
+                ],
+            },
+        ],
+        "max_tokens": 180,
+        "response_format": {"type": "json_object"},
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {settings.dashscope_api_key}",
+    }
+    async with httpx.AsyncClient(timeout=45.0) as client:
+        resp = await client.post(QWEN_VL_URL, json=payload, headers=headers)
+        if resp.status_code != 200:
+            return {"ok": True, "reason": f"judge skipped HTTP {resp.status_code}", "fix_prompt": ""}
+        data = resp.json()
+    content = (data.get("choices") or [{}])[0].get("message", {}).get("content", "")
+    import json as _json, re
+    content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+    try:
+        out = _json.loads(content)
+    except Exception:
+        return {"ok": True, "reason": "judge parse skipped", "fix_prompt": ""}
+    return {
+        "ok": bool(out.get("ok", True)),
+        "reason": str(out.get("reason") or "")[:300],
+        "fix_prompt": str(out.get("fix_prompt") or "Blend the face naturally with the body; match skin tone, lighting, color temperature, and face boundary.")[:500],
+    }

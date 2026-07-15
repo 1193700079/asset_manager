@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { ossResize } from './MediaGrid';
 import type { VFESearchItem } from '../types';
 import { api } from '../api/client';
 import Modal from './Modal';
 import './GeneratePanel.css';
-
-const VFE_BASE = 'http://localhost:8899';
 
 const GEN_TABS = [
   { value: 'faceswap', label: '换脸', category: 'image', needsSource: true, needsFace: true },
@@ -217,7 +216,7 @@ export default function GeneratePanel({
     setComfyuiSubmitting(true);
     try {
       const card = selectedSourceCards[0];
-      const imageUrl = profileImage || (card ? VFE_BASE + (card.oss_url || card.image_url) : '');
+      const imageUrl = profileImage || (card ? (card.oss_url || card.image_url) : '');
       // For comfy_video: prefer i2v_prompt → video_prompt → prompt (ZImage).
       // For other comfy tasks: use the standard prompt.
       const fallbackPrompt = card
@@ -311,7 +310,7 @@ export default function GeneratePanel({
   }, [comfyuiType]);
 
   const handleUseAsFace = (card: VFESearchItem) => {
-    setFaceImage(VFE_BASE + card.oss_url);
+    setFaceImage(card.oss_url);
   };
 
   const handleSkipCard = async (card: VFESearchItem) => {
@@ -391,12 +390,13 @@ export default function GeneratePanel({
     setSubmitting(true);
     try {
       const card = selectedSourceCards[0];
-      const sourceImage = card ? VFE_BASE + (card.oss_url || card.image_url) : '';
+      const sourceImage = card ? (card.oss_url || card.image_url) : '';
 
       const res = await api.createGeneration({
         character_id: characterId,
         character_name: characterName,
         task_type: activeTab,
+        engine: (activeTab === 'zimage' || activeTab === 'imageedit') ? 'vps141' : 'smartstudio',
         source_image: sourceImage,
         face_image: faceImage,
         prompt: currentGenTab.category === 'video'
@@ -559,7 +559,7 @@ export default function GeneratePanel({
           <div className="gen-cards">
             {sourceCards.map(card => {
               const isSelected = selectedCards.has(card.video_path);
-              const imgUrl = VFE_BASE + card.image_url;
+              const imgUrl = card.image_url;
               return (
                 <div
                   key={card.video_path}
@@ -567,7 +567,7 @@ export default function GeneratePanel({
                   onClick={() => toggleCard(card.video_path)}
                 >
                   {isSelected && <div className="gen-card-check">✓</div>}
-                  <img src={imgUrl} loading="lazy" onDoubleClick={e => { e.stopPropagation(); setGenModalUrl(imgUrl); }} />
+                  <img src={ossResize(imgUrl, 400, 70)} loading="lazy" onDoubleClick={e => { e.stopPropagation(); setGenModalUrl(imgUrl); }} />
                   <div className="gen-card-actions">
                     <button
                       className="gen-card-skip-btn"
@@ -697,7 +697,7 @@ export default function GeneratePanel({
                 <div className="gen-config-row">
                   <label>输入图片:</label>
                   <div className="gen-profile-preview">
-                    <img src={profileImages[0]} className="gen-profile-thumb active" />
+                    <img src={ossResize(profileImages[0] || "", 200, 70)} className="gen-profile-thumb active" />
                     <span className="gen-profile-hint">自动使用第一张 Profile 图片</span>
                   </div>
                 </div>

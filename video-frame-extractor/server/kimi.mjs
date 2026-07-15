@@ -1281,96 +1281,166 @@ export function getVideoPromptModels() {
     }));
 }
 
+const _sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Detect model refusals / moderation garbage so callers can treat them as
+// PERMANENT failures (retrying the same model won't help) rather than
+// transient errors. Patterns drawn from real production logs.
+function looksLikeRefusal(text) {
+    if (!text || typeof text !== 'string') return false;
+    const t = text.trim();
+    if (!t) return false;
+    // English refusal openers
+    if (/^(I am unable|I'?m unable|I cannot|I can'?t|I can not|I won'?t|I will not|I'?m not|I do not|I don'?t|I'?m sorry|I am sorry|Sorry,|As an AI|Unfortunately,)/i.test(t)) return true;
+    // Chinese refusals
+    if (/(抱歉|无法满足|无法生成|无法完成|不能帮|我不能|很遗憾)/.test(t)) return true;
+    // Bracketed / jailbreak garbage markers seen in logs: [NULL] [ CLOSE ] [ EDGELORD ...
+    if (/\[\s*(NULL|CLOSE|EDGELORD|UNSTABLE|CTRL\+C)/i.test(t)) return true;
+    if (/^\[\s*\/(\s*\/)+/.test(t)) return true; // "[ / / / 🔴 ..."
+    if (/^\*[A-Za-z]/.test(t)) return true;        // "*Cracks knuckles*..."
+    return false;
+}
+
 export async function convertImagePromptToVideo(imagePrompts, modelId = 'qwen3.7-plus') {
-    if (!imagePrompts || imagePrompts.length === 0) return { results: [], modelId };
+    if (!imagePrompts || imagePrompts.length === 0) return { results: [], modelId, refused: [] };
 
     const BATCH_SIZE = 10;
+    const MAX_RETRIES = 3;       // for transient 429 / network errors
+    const BACKOFF_BASE_MS = 1000;
+    const INTER_BATCH_MS = 300;  // smooth request rate to avoid burst 429
     const results = [];
+    const refused = []; // parallel to results: true => permanent failure (model refusal/moderation)
 
     const modelConfig = VIDEO_PROMPT_MODELS[modelId] || VIDEO_PROMPT_MODELS['qwen3.7-plus'];
     const systemPrompt = modelConfig.systemPrompt;
+
+    // POST one batch with exponential backoff on 429 / network errors.
+    // Returns { data } on success, or { transient } / { refused } on failure.
+    const postBatchWithRetry = async (numberedList) => {
+        for (let attempt = 0; ; attempt++) {
+            try {
+                const response = await fetch(`${DASHSCOPE_BASE_URL}/chat/completions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${DASHSCOPE_API_KEY}`,
+                        'X-DashScope-DataInspection': JSON.stringify({ input: 'disable', output: 'disable' }),
+                    },
+                    body: JSON.stringify({
+                        model: modelConfig.modelName,
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: numberedList },
+                        ],
+                        max_tokens: 4096,
+                    }),
+                });
+
+                if (response.status === 429) {
+                    if (attempt < MAX_RETRIES) {
+                        const delay = BACKOFF_BASE_MS * 2 ** attempt + Math.floor(Math.random() * 500);
+                        console.warn(`[convertImagePromptToVideo] 429 rate limit, retry ${attempt + 1}/${MAX_RETRIES} in ${delay}ms`);
+                        await _sleep(delay);
+                        continue;
+                    }
+                    console.error('[convertImagePromptToVideo] 429 rate limit, retries exhausted');
+                    return { transient: true };
+                }
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`[convertImagePromptToVideo] API error (${response.status}): ${errorText}`);
+                    // 4xx other than 429 is typically content moderation / bad request => permanent
+                    return { refused: response.status >= 400 && response.status < 500, transient: response.status >= 500 };
+                }
+
+                const data = await response.json();
+                if (data?.error) {
+                    const errMsg = typeof data.error === 'string' ? data.error : (data.error.message || JSON.stringify(data.error));
+                    console.error(`[convertImagePromptToVideo] API returned error: ${errMsg}`);
+                    return { transient: true };
+                }
+                if (!data?.choices?.[0]?.message?.content) {
+                    console.error('[convertImagePromptToVideo] Unexpected response shape');
+                    return { transient: true };
+                }
+                return { data };
+            } catch (err) {
+                // network failure ("fetch failed") => transient
+                if (attempt < MAX_RETRIES) {
+                    const delay = BACKOFF_BASE_MS * 2 ** attempt + Math.floor(Math.random() * 500);
+                    console.warn(`[convertImagePromptToVideo] network error "${err.message}", retry ${attempt + 1}/${MAX_RETRIES} in ${delay}ms`);
+                    await _sleep(delay);
+                    continue;
+                }
+                console.error(`[convertImagePromptToVideo] Batch error after retries: ${err.message}`);
+                return { transient: true };
+            }
+        }
+    };
 
     for (let i = 0; i < imagePrompts.length; i += BATCH_SIZE) {
         const batch = imagePrompts.slice(i, i + BATCH_SIZE);
         const numberedList = batch.map((p, idx) => `${idx + 1}. ${p}`).join('\n');
 
+        if (i > 0) await _sleep(INTER_BATCH_MS);
+
+        const outcome = await postBatchWithRetry(numberedList);
+
+        if (!outcome.data) {
+            // transient => null (retry next run); refused => permanent (park after maxAttempts)
+            const isRefused = !!outcome.refused;
+            for (let j = 0; j < batch.length; j++) { results.push(null); refused.push(isRefused); }
+            continue;
+        }
+
+        const content = outcome.data.choices[0].message.content;
+
+        // Whole-response refusal (model refused the entire batch as prose)
+        if (looksLikeRefusal(content)) {
+            console.warn(`[convertImagePromptToVideo] response looks like a refusal, marking batch as refused`);
+            for (let j = 0; j < batch.length; j++) { results.push(null); refused.push(true); }
+            continue;
+        }
+
+        let jsonStr = content;
+        const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (jsonMatch) {
+            jsonStr = jsonMatch[1].trim();
+        } else {
+            const firstBracket = content.indexOf('[');
+            if (firstBracket > 0) jsonStr = content.slice(firstBracket);
+        }
+
+        let parsed;
         try {
-            const response = await fetch(`${DASHSCOPE_BASE_URL}/chat/completions`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${DASHSCOPE_API_KEY}`,
-                    'X-DashScope-DataInspection': JSON.stringify({ input: 'disable', output: 'disable' }),
-                },
-                body: JSON.stringify({
-                    model: modelConfig.modelName,
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: numberedList },
-                    ],
-                    max_tokens: 4096,
-                }),
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error(`[convertImagePromptToVideo] API error (${response.status}): ${errorText}`);
-                results.push(...batch.map(() => null));
-                continue;
-            }
-
-            const data = await response.json();
-            if (data?.error) {
-                const errMsg = typeof data.error === 'string' ? data.error : (data.error.message || JSON.stringify(data.error));
-                console.error(`[convertImagePromptToVideo] API returned error: ${errMsg}`);
-                results.push(...batch.map(() => null));
-                continue;
-            }
-            if (!data?.choices?.[0]?.message?.content) {
-                console.error('[convertImagePromptToVideo] Unexpected response shape');
-                results.push(...batch.map(() => null));
-                continue;
-            }
-
-            const content = data.choices[0].message.content;
-            let jsonStr = content;
-            const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-            if (jsonMatch) {
-                jsonStr = jsonMatch[1].trim();
+            parsed = JSON.parse(jsonStr);
+        } catch (parseErr) {
+            // Fallback: try splitting by newlines for individual prompts
+            console.warn(`[convertImagePromptToVideo] JSON parse failed, trying line split. Error: ${parseErr.message}`);
+            const lines = content.split('\n').filter(l => l.trim().length > 0);
+            if (lines.length >= batch.length) {
+                parsed = lines.slice(0, batch.length);
             } else {
-                const firstBracket = content.indexOf('[');
-                if (firstBracket > 0) jsonStr = content.slice(firstBracket);
+                // Unparseable, non-refusal noise => permanent (won't improve on retry)
+                for (let j = 0; j < batch.length; j++) { results.push(null); refused.push(true); }
+                continue;
             }
+        }
 
-            let parsed;
-            try {
-                parsed = JSON.parse(jsonStr);
-            } catch (parseErr) {
-                // Fallback: try splitting by newlines for individual prompts
-                console.warn(`[convertImagePromptToVideo] JSON parse failed, trying line split. Error: ${parseErr.message}`);
-                const lines = content.split('\n').filter(l => l.trim().length > 0);
-                if (lines.length >= batch.length) {
-                    parsed = lines.slice(0, batch.length);
-                } else {
-                    results.push(...batch.map(() => null));
-                    continue;
-                }
+        if (Array.isArray(parsed)) {
+            for (let j = 0; j < batch.length; j++) {
+                const item = parsed[j];
+                const valid = item && typeof item === 'string' && !looksLikeRefusal(item);
+                results.push(valid ? item : null);
+                refused.push(valid ? false : true);
             }
-
-            if (Array.isArray(parsed)) {
-                for (let j = 0; j < batch.length; j++) {
-                    results.push(parsed[j] && typeof parsed[j] === 'string' ? parsed[j] : null);
-                }
-            } else {
-                results.push(...batch.map(() => null));
-            }
-        } catch (err) {
-            console.error(`[convertImagePromptToVideo] Batch error: ${err.message}`);
-            results.push(...batch.map(() => null));
+        } else {
+            for (let j = 0; j < batch.length; j++) { results.push(null); refused.push(true); }
         }
     }
 
-    return { results, modelId };
+    return { results, modelId, refused };
 }
 
 // Exported helpers for tag review API

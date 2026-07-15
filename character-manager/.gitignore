@@ -6,3 +6,12 @@ frontend/dist/
 # Logs and generated files
 backend/logs/
 backend/server.log
+
+# secrets
+backend/.env
+backend/runtime_config.json
+
+# editor backups (may contain secrets)
+*.bak
+*.bak.*
+.env.bak*

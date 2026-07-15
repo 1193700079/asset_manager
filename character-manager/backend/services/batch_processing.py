@@ -37,7 +37,7 @@ import aiohttp
 import psycopg2.extras
 
 from database import get_conn_for, put_conn_for
-from services import smartstudio_client, vfe_client, avatar as avatar_service, comfyui_single
+from services import smartstudio_client, vfe_client, avatar as avatar_service, comfyui_single, local_faceswap_client
 from services import dashscope_client
 from services.comfyui_single import (
     COMFYUI_HOST, COMFYUI_PORTS,
@@ -51,7 +51,7 @@ from services.comfyui_single import (
 
 POLL_INTERVAL = 5
 POLL_TIMEOUT = 600
-CONCURRENCY = 2
+CONCURRENCY = 6
 
 PRESET_EDIT_PROMPTS = [
     {
@@ -94,7 +94,7 @@ _JOBS_DIR = Path(__file__).resolve().parent.parent / "logs" / "jobs"
 _JOBS_DIR.mkdir(parents=True, exist_ok=True)
 _PERSIST_KEYS = (
     "job_id", "type", "data_source", "per_character", "category",
-    "width", "height", "seed", "edit_prompt", "engine",
+    "width", "height", "seed", "edit_prompt", "engine", "material_type",
     "status", "total", "processed", "succeeded", "failed", "current",
     "results", "error", "started_at", "finished_at",
     "units", "unit_status",
@@ -182,10 +182,14 @@ def _media_lock(ds: str, char_id: int) -> threading.Lock:
 
 # ----------------------------------------------------------------- helpers
 def _vfe_image_url(item: dict) -> str | None:
-    """Pick a fetchable URL (oss_url preferred, fallback to VFE local serve)."""
+    """Pick a fetchable body image URL for server-side faceswap."""
     oss = item.get("oss_url")
     if oss:
         return oss
+    path = item.get("video_path")
+    if path:
+        from urllib.parse import quote
+        return "http://127.0.0.1:18022/api/images/serve?path=" + quote(path, safe="/")
     img = item.get("image_url")
     if img:
         from config import settings
@@ -204,6 +208,94 @@ def _parse_media(raw):
         return []
 
 
+
+
+# Curated charm scenes for prompt_source="scenes": scene + outfit + pose + light.
+SCENE_EDIT_PROMPTS = [
+    ('bathtub_luxury', 'relaxing beside a luxurious marble bathtub filled with bubble foam, wearing an elegant satin robe, wet hair softly styled, warm candlelight, steam in the air, upscale spa bathroom, lifestyle editorial photo'),
+    ('bathtub_flower_spa', 'sitting on the edge of a freestanding bathtub in a boutique spa bathroom, floral bath salts and towels nearby, wearing a soft bathrobe, calm relaxed smile, bright clean natural light'),
+    ('bathtub_modern_apartment', 'in a modern apartment bathroom next to a white oval bathtub, oversized white shirt and shorts, skincare bottles on the counter, cozy morning mood, realistic lifestyle photo'),
+    ('shower_glass', 'standing outside a glass shower after washing hair, wearing a plush towel wrap, water droplets on the glass, warm bathroom lighting, fresh clean beauty-ad atmosphere'),
+    ('shower_rain_spa', 'in a luxury rain-shower spa room, wrapped in a robe, holding a towel and smiling at the mirror, soft steam, elegant hotel bathroom, clean cinematic lighting'),
+    ('gym_weight_area', 'working out in a modern weight-training gym, fitted sports top and high-waist leggings, standing near dumbbell rack, confident athletic pose, bright energetic lighting'),
+    ('gym_yoga_studio', 'stretching in a peaceful yoga studio with wooden floor and large windows, matching activewear set, yoga mat and plants, calm natural morning light'),
+    ('gym_treadmill', 'walking on a treadmill in a premium fitness club, sporty zip jacket and leggings, city view through floor-to-ceiling windows, energetic candid moment'),
+    ('gym_boxing', 'training in a boxing gym, athletic tank top, hand wraps and gloves, standing near punching bags, gritty cinematic sports lighting, confident expression'),
+    ('restaurant_fine_dining', 'having dinner at an upscale fine-dining restaurant, elegant evening dress, candlelit table, wine glass, soft bokeh lights, refined romantic atmosphere'),
+    ('restaurant_casual_bistro', 'sitting at a cozy neighborhood bistro table, chic blouse and skirt, menu and pasta plate on the table, warm casual dinner atmosphere'),
+    ('restaurant_rooftop', 'at a rooftop restaurant with city skyline behind, stylish cocktail dress, outdoor terrace lights, evening breeze, cinematic date-night photo'),
+    ('cafe_window', 'sitting by the window in a bright modern cafe, knit sweater and jeans, coffee cup and laptop on table, soft daylight, relaxed lifestyle portrait'),
+    ('restaurant_hotpot', 'sharing a meal at a lively Asian hotpot restaurant, cute casual outfit, steam rising from the pot, colorful plates on the table, friendly candid smile'),
+    ('kitchen_morning', 'cooking breakfast in a bright modern kitchen, cute apron over casual clothes, sunlight through the window, fresh fruit and coffee on the counter'),
+    ('kitchen_baking', 'baking cookies in a cozy home kitchen, pastel apron, flour on the counter, warm oven light, playful candid pose'),
+    ('kitchen_late_night', 'standing in a sleek apartment kitchen at night, oversized sweater and shorts, soft under-cabinet lighting, making tea, intimate cozy mood'),
+    ('bedroom_cozy', 'lounging on a cozy bed in a warmly lit bedroom, silk pajama set, soft lamp glow, tidy sheets and pillows, relaxed inviting lifestyle photo'),
+    ('bedroom_morning', 'sitting near a bedroom window in morning light, oversized shirt and shorts, coffee mug in hand, airy curtains, peaceful home atmosphere'),
+    ('bedroom_vanity', 'getting ready at a vanity table in a stylish bedroom, elegant casual dress, makeup mirror lights, perfume bottles, glamorous but natural moment'),
+    ('bedroom_reading', 'reading a book on a neatly made bed, soft cardigan and lounge pants, warm bedside lamp, calm intimate room portrait'),
+    ('mall_luxury_arcade', 'shopping in a luxury mall arcade with marble floors and designer storefronts, chic outfit, carrying boutique shopping bags, polished editorial style'),
+    ('mall_food_court', 'walking through a busy mall food court, trendy casual outfit, neon signs and food stalls in background, candid urban lifestyle shot'),
+    ('mall_cosmetics_store', 'trying skincare products in a bright cosmetics store inside a mall, stylish blouse, mirrors and product shelves, clean beauty retail lighting'),
+    ('mall_escalator', 'standing on an escalator in a large glass-roof shopping center, fashionable coat and skirt, shoppers blurred in the background, dynamic candid angle'),
+    ('mall_clothing_boutique', 'inside a clothing boutique fitting area, holding dresses on hangers, trendy outfit, warm boutique lighting and mirrors, playful shopping mood'),
+    ('subway_car', 'standing in a subway car holding the handrail, chic urban outfit, soft motion blur outside windows, clean commuter atmosphere, confident gaze'),
+    ('subway_platform', 'waiting on a modern subway platform, trench coat and boots, train lights approaching, cinematic city commute mood'),
+    ('car_passenger_night', 'sitting in the passenger seat of a luxury car at night, elegant dress, city neon lights through the window, cinematic close-up lighting'),
+    ('car_roadtrip', 'in a car during a daytime road trip, casual travel outfit, sunglasses, open window with countryside blur outside, carefree smile'),
+    ('bus_city_window', 'sitting by the window on a city bus, casual cute outfit, sunlight streaming through glass, dreamy look outside, everyday urban realism'),
+    ('bus_airport_shuttle', 'standing on an airport shuttle bus with luggage, comfortable travel outfit, soft morning light, travel-documentary style'),
+    ('amusement_ferris_wheel', 'at a colorful amusement park with a ferris wheel behind, playful summer dress, holding cotton candy, joyful smile, bright afternoon light'),
+    ('amusement_carousel', 'beside a vintage carousel with warm lights, cute cardigan and skirt, whimsical nostalgic atmosphere, playful portrait'),
+    ('amusement_arcade', 'inside an amusement park arcade, casual streetwear, neon game machines and prize toys, energetic colorful lighting'),
+    ('amusement_night_fireworks', 'walking through an amusement park at night with fireworks and glowing rides behind, light jacket over dress, magical cinematic mood'),
+    ('amusement_theme_gate', 'at the entrance gate of a theme park with colorful signs and mascots, casual vacation outfit, holding a ticket, bright happy travel vibe'),
+    ('bar_cocktail', 'sitting at a stylish cocktail bar, elegant evening dress but tasteful, holding a cocktail glass, moody neon bar lighting'),
+    ('bar_rooftop_lounge', 'at a rooftop lounge bar with skyline lights, chic blazer dress, cocktail table, relaxed confident evening portrait'),
+    ('bar_live_music', 'in a small live-music bar near the stage, stylish casual outfit, warm red and amber lights, intimate nightlife atmosphere'),
+    ('cinema_seat', 'in a dim movie theater seat with popcorn, cozy stylish casual wear, soft screen glow on the face, playful sideways glance'),
+    ('cinema_lobby', 'standing in a cinema lobby near movie posters and popcorn counter, casual date-night outfit, colorful marquee lights'),
+    ('cinema_vip_room', 'in a premium VIP cinema lounge with plush seats, elegant casual outfit, low warm lighting, relaxed private screening mood'),
+    ('travel_seaside', 'traveling at a scenic seaside viewpoint, sun hat and flowy summer dress, golden hour light, wind in hair, radiant smile'),
+    ('travel_airport', 'walking through an international airport terminal with carry-on luggage, stylish comfortable travel outfit, glass walls and departure boards'),
+    ('travel_old_town', 'exploring a historic old-town street with stone buildings, light dress and small bag, warm afternoon travel photography'),
+    ('travel_mountain_lodge', 'standing outside a cozy mountain lodge, sweater and scarf, pine forest and misty mountains behind, peaceful travel portrait'),
+    ('travel_train_station', 'waiting at a scenic train station platform with luggage, long coat and boots, soft overcast travel mood'),
+    ('hotel_city_room', 'in an upscale hotel room by floor-to-ceiling windows, city skyline at dusk, elegant robe over lounge clothes, relaxed refined pose'),
+    ('hotel_lobby', 'walking through a grand hotel lobby with marble columns and chandeliers, chic travel outfit, suitcase beside her, polished luxury atmosphere'),
+    ('hotel_corridor', 'standing in a softly lit boutique hotel corridor, elegant dress and small clutch, patterned carpet and warm wall lights, cinematic framing'),
+    ('hotel_balcony', 'on a hotel balcony overlooking the city, satin blouse and skirt, evening breeze, warm interior light behind, travel lifestyle mood'),
+    ('hotel_poolside', 'relaxing at a resort hotel poolside, tasteful summer cover-up over swimsuit, lounge chairs and palm trees, sunny vacation atmosphere'),
+    ('library_bookshelves', 'in a quiet library between tall bookshelves, glasses, fitted knit sweater and skirt, holding a book, soft intellectual charm'),
+    ('library_reading_room', 'sitting at a long wooden table in a classic reading room, blouse and cardigan, green banker lamps, calm scholarly atmosphere'),
+    ('bookstore_corner', 'browsing in a cozy independent bookstore, casual coat, stacks of books and warm lamps, thoughtful candid moment'),
+    ('supermarket_aisle', 'grocery shopping in a supermarket aisle, casual top and jeans, pushing a cart, colorful shelves, candid charming smile'),
+    ('supermarket_fresh_food', 'choosing fresh fruit in the produce section, light cardigan and jeans, bright clean grocery lighting, everyday lifestyle realism'),
+    ('supermarket_checkout', 'standing near a supermarket checkout with shopping basket, casual outfit, receipt and packaged goods, natural candid shot'),
+    ('street_golden_hour', 'walking on a busy city street at golden hour, trendy streetwear, candid paparazzi-style shot, confident stride'),
+    ('street_rainy', 'walking down a rainy city street under a transparent umbrella, trench coat, reflections on pavement, cinematic moody lighting'),
+    ('street_neon', 'standing on a neon-lit street at night, leather jacket and skirt, colorful signs and blurred pedestrians, urban cinematic portrait'),
+    ('street_market', 'exploring a lively street market with food stalls and lanterns, casual summer outfit, vibrant documentary-style background'),
+    ('office_after_hours', 'in a modern office after hours, fitted white shirt and pencil skirt, leaning near a desk, city lights outside, confident professional look'),
+    ('office_meeting_room', 'standing in a glass meeting room with presentation screen, blazer and tailored pants, modern corporate setting, polished confident pose'),
+    ('office_coffee_break', 'taking a coffee break in an office lounge, soft blouse and trousers, plants and sofas, bright coworking-space atmosphere'),
+    ('office_desk_work', 'sitting at a clean office desk with laptop and notebook, professional blouse, soft daylight through blinds, focused but friendly expression'),
+]
+
+def _first_profile_image(ch: dict) -> str | None:
+    """First published profile image (media JSON order): type=image, not deleted,
+    not pending (legacy items without media_status count as published)."""
+    for m in _parse_media(ch.get("media")):
+        if not isinstance(m, dict) or m.get("is_deleted"):
+            continue
+        if m.get("type") != "image":
+            continue
+        if m.get("media_status") == "pending":
+            continue
+        u = m.get("url")
+        if u:
+            return u
+    return None
+
 def _fetch_characters(ds: str, category: str | None) -> list[dict]:
     conn = get_conn_for(ds)
     try:
@@ -211,7 +303,7 @@ def _fetch_characters(ds: str, category: str | None) -> list[dict]:
             q = """SELECT id, name, description, attributes, avatar_url, media
                    FROM characters
                    WHERE (is_deleted IS NULL OR is_deleted = FALSE)
-                     AND creator_id = 'official'"""
+                     AND creator_id IN ('official', 'system')"""
             params: list = []
             if category:
                 cats = [c.strip() for c in category.split(",") if c.strip()]
@@ -231,9 +323,12 @@ def _append_media(ds: str, char_id: int, url: str, media_type: str, source: str,
     if url and url.startswith("http"):
         import requests as _req
         try:
-            r = _req.head(url, timeout=10, allow_redirects=True)
-            if r.status_code >= 400:
-                raise RuntimeError(f"Generated URL not accessible (HTTP {r.status_code}): {url[:120]}")
+            r = _req.get(url, timeout=10, allow_redirects=True, stream=True)
+            try:
+                if r.status_code >= 400:
+                    raise RuntimeError(f"Generated URL not accessible (HTTP {r.status_code}): {url[:120]}")
+            finally:
+                r.close()
         except _req.RequestException as e:
             raise RuntimeError(f"Generated URL unreachable: {url[:120]} ({type(e).__name__})")
 
@@ -444,12 +539,21 @@ async def _persist_url(url: str, task_id: str) -> str:
         elif ".webm" in url.split("?")[0]:
             ext = ".webm"
 
+        data = None
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=60)) as resp:
-                if resp.status != 200:
-                    print(f"[batch] WARN: download failed {resp.status}, using original URL")
-                    return url
-                data = await resp.read()
+            for attempt in range(3):
+                try:
+                    async with session.get(url, timeout=aiohttp.ClientTimeout(total=120)) as resp:
+                        if resp.status != 200:
+                            print(f"[batch] WARN: download failed {resp.status}, using original URL")
+                            return url
+                        data = await resp.read()
+                    break
+                except Exception as e:
+                    if attempt == 2:
+                        raise
+                    print(f"[batch] persist download retry {attempt+1}: {e!r}")
+                    await asyncio.sleep(15)
 
         with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
             tmp.write(data)
@@ -708,16 +812,23 @@ async def _gen_zimage(engine: str, prompt: str, w: int, h: int, seed: int, is_st
 
 
 async def _gen_imageedit(engine: str, image: str, prompt: str, seed: int, is_stopping=None) -> str:
+    if engine == "qwenedit":
+        from services import qwen_edit_client
+        import uuid as _uuid
+        url = await qwen_edit_client.edit_image(image, prompt, seed)
+        return await _persist_url(url, f"qwenedit-{_uuid.uuid4().hex[:12]}")
     if engine == "comfyui":
         session = await _get_session()
         return await _comfy_run(session, "comfy_edit", image_url=image, prompt=prompt, seed=seed, is_stopping=is_stopping)
     return await _run_and_wait(smartstudio_client.create_imageedit(image, prompt, seed))
 
 
-async def _gen_faceswap(engine: str, body: str, face: str, seed: int, is_stopping=None) -> str:
+async def _gen_faceswap(engine: str, body: str, face: str, seed: int, prompt: str = "", is_stopping=None) -> str:
     if engine == "comfyui":
         session = await _get_session()
         return await _comfy_run(session, "comfy_swap", image_url=body, face_url=face, seed=seed, is_stopping=is_stopping)
+    if engine == "local_faceswap":
+        return await local_faceswap_client.face_swap(body, face, prompt=prompt, seed=seed)
     return await _run_and_wait(smartstudio_client.create_faceswap(body, face, seed))
 
 
@@ -765,42 +876,46 @@ async def _build_units(job: dict, ds: str) -> list[dict]:
 
     elif btype == "zimage":
         # Pull a shared pool of prompts; assign per character.
+        mt = job.get("material_type")
         for ch in chars:
-            mats = await vfe_client.search_images(limit=per, offset=0, order="random")
+            mats = await vfe_client.search_images(limit=per, offset=0, order="random", material_type=mt)
             prompts = [it.get("prompt") for it in mats.get("items", []) if it.get("prompt")]
             for p in prompts[:per]:
                 units.append({"char": ch, "prompt": p})
 
     elif btype == "imageedit":
         for ch in chars:
-            if not ch.get("avatar_url"):
+            if job.get("engine") == "qwenedit":
+                base_img = ch.get("avatar_url") or _first_profile_image(ch)
+            else:
+                base_img = _first_profile_image(ch) or ch.get("avatar_url")
+            if not base_img:
                 continue
-            mats = await vfe_client.search_images(limit=per, offset=0, order="random")
-            prompts = [it.get("prompt") for it in mats.get("items", []) if it.get("prompt")]
-            for p in prompts[:per]:
+            if job.get("prompt_source") == "scenes":
+                pool = [p for _k, p in SCENE_EDIT_PROMPTS]
+                prompts = random.sample(pool, per) if per < len(pool) else pool[:]
+            else:
+                mats = await vfe_client.search_images(limit=per, offset=0, order="random", material_type=job.get("material_type"))
+                prompts = [it.get("prompt") for it in mats.get("items", []) if it.get("prompt")]
+            for p in prompts[:max(per, len(prompts))]:
                 edit_instruction = (
                     f"Keep the same person's face and identity consistent. "
                     f"Place this person in the following scene: {p}"
                 )
-                units.append({"char": ch, "prompt": edit_instruction, "base": ch["avatar_url"]})
+                units.append({"char": ch, "prompt": edit_instruction, "base": base_img})
 
     elif btype == "faceswap":
         for ch in chars:
             if not ch.get("avatar_url"):
                 continue
-            # Pull VFE face_nsfw materials (now includes prompt from annotation join)
+            # Use real library images as bodies; no zimage side-path, so
+            # per_character means exactly that many swaps per character.
             mats = await vfe_client.get_faceswap_materials(limit=per)
-            items = mats.get("items", [])
-            # swap_direct: body = VFE material image directly
-            for it in items[:per]:
+            for it in mats.get("items", [])[:per]:
                 body = _vfe_image_url(it)
                 if body:
-                    units.append({"char": ch, "face": ch["avatar_url"], "body": body, "origin": "swap_direct"})
-            # swap_zimage: body generated by zimage using the material's prompt
-            for it in items[:per]:
-                p = it.get("prompt")
-                if p:
-                    units.append({"char": ch, "face": ch["avatar_url"], "zimage_prompt": p, "origin": "swap_zimage"})
+                    await vfe_client.mark_faceswap_material_used(it.get("video_path"), ch.get("id"), job.get("job_id"))
+                    units.append({"char": ch, "face": ch["avatar_url"], "body": body, "prompt": it.get("prompt") or "", "origin": "swap_direct", "video_path": it.get("video_path")})
 
     elif btype == "video":
         for ch in chars:
@@ -885,15 +1000,22 @@ async def _process_unit(ds: str, btype: str, unit: dict, seed: int, w: int, h: i
 
     elif btype == "imageedit":
         url = await _gen_imageedit(engine, unit["base"], unit["prompt"], seed, is_stopping=is_stopping)
-        _append_media(ds, ch["id"], url, "image", "imageedit", {"prompt": unit["prompt"], "engine": engine})
+        src_label = "qwen-edit" if engine == "qwenedit" else "imageedit"
+        _append_media(ds, ch["id"], url, "image", src_label, {"prompt": unit["prompt"], "engine": engine, "tier": "paid"})
 
     elif btype == "faceswap":
         if unit["origin"] == "swap_zimage":
             body = await _gen_zimage(engine, unit["zimage_prompt"], w, h, seed, is_stopping=is_stopping)
         else:
             body = unit["body"]
-        url = await _gen_faceswap(engine, body, unit["face"], seed, is_stopping=is_stopping)
-        _append_media(ds, ch["id"], url, "image", unit["origin"], {"model_source": unit["origin"], "engine": engine})
+        url = await _gen_faceswap(engine, body, unit["face"], seed, prompt=unit.get("prompt") or "", is_stopping=is_stopping)
+        extra = {"model_source": unit["origin"], "engine": engine}
+        source = unit["origin"]
+        if engine == "local_faceswap":
+            # QA disabled per request: ComfyUI faceswap workflow output is used as-is.
+            # No post-workflow qwen3.7-plus judge / bad-tagging / qwen-edit correction.
+            url = await _persist_url(url, f"{uuid.uuid4().hex}_faceswap")
+        _append_media(ds, ch["id"], url, "image", source, extra)
 
     elif btype == "video":
         url = await _gen_video(engine, unit["frame"], unit["video_prompt"], seed, is_stopping=is_stopping)
@@ -938,13 +1060,12 @@ def _worker(job_id: str, ds: str, *, resume: bool = False):
             with _lock:
                 job["status"] = "building"
             _persist_job(job_id)
-            # Fail-fast: types that pull material from VFE are useless without it.
+            # Fail-fast: types that pull material from Supabase need DB access.
             if btype in ("zimage", "imageedit", "faceswap", "video"):
                 ping = await vfe_client.ping(timeout=3.0)
                 if not ping.get("ok"):
                     raise RuntimeError(
-                        f"VFE 后端不可用，已取消批处理。请先启动 VFE: "
-                        f"`cd video-frame-extractor && npm run server:daemon`。详情: {ping.get('error')}"
+                        f"数据库不可用，已取消批处理。请检查 Supabase 连接。详情: {ping.get('error')}"
                     )
             built = await _build_units(job, ds)
             units = built
@@ -962,6 +1083,10 @@ def _worker(job_id: str, ds: str, *, resume: bool = False):
             conc = len(COMFYUI_PORTS)
         elif engine == "dashscope":
             conc = 4
+        elif engine == "qwenedit":
+            conc = 2
+        elif engine == "local_faceswap":
+            conc = 2
         else:
             conc = CONCURRENCY
         with _lock:
@@ -1064,10 +1189,6 @@ def _worker(job_id: str, ds: str, *, resume: bool = False):
             loop.run_until_complete(_close_session())
         except Exception as ce:
             print(f"[batch] aiohttp session close failed: {ce}")
-        try:
-            loop.run_until_complete(vfe_client.close_client())
-        except Exception as ce:
-            print(f"[batch] vfe httpx client close failed: {ce}")
         loop.close()
 
 
@@ -1078,11 +1199,12 @@ VALID_TYPES = {"anime", "anime_direct", "faceswap", "zimage", "imageedit", "vide
 def start_job(ds: str, btype: str, per_character: int = 10, category: str | None = None,
               width: int = 1024, height: int = 1536, seed: int = 0,
               edit_prompt: str | None = None, engine: str = "smartstudio",
-              overwrite: bool = False) -> dict:
+              overwrite: bool = False, material_type: str | None = None,
+              prompt_source: str | None = None) -> dict:
     global _current_job_id
     if btype not in VALID_TYPES:
         return {"status": "error", "message": f"未知批处理类型: {btype}"}
-    if engine not in ("smartstudio", "comfyui", "dashscope"):
+    if engine not in ("smartstudio", "comfyui", "dashscope", "qwenedit", "local_faceswap"):
         engine = "smartstudio"
     with _lock:
         if _current_job_id and _jobs.get(_current_job_id, {}).get("status") in ("running", "stopping", "building", "starting"):
@@ -1090,11 +1212,13 @@ def start_job(ds: str, btype: str, per_character: int = 10, category: str | None
         job_id = uuid.uuid4().hex
         _jobs[job_id] = {
             "job_id": job_id, "type": btype, "data_source": ds,
-            "per_character": max(1, min(per_character, 50)),
+            "per_character": max(1, min(per_character, 200)),
+            "prompt_source": prompt_source,
             "category": category, "width": width, "height": height, "seed": seed,
             "edit_prompt": (edit_prompt or "").strip() or ANIME_EDIT_PROMPT,
             "engine": engine,
             "overwrite": overwrite,
+            "material_type": material_type,
             "status": "starting", "total": 0, "processed": 0,
             "succeeded": 0, "failed": 0, "current": None,
             "results": [], "error": None,

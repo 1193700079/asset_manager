@@ -1,9 +1,19 @@
+import os
+import urllib.request
+from urllib.parse import quote
+
 from fastapi import APIRouter
+from fastapi.responses import FileResponse, RedirectResponse, Response, StreamingResponse
 from pydantic import BaseModel
 from services import vfe_client
 import time
 
 router = APIRouter(prefix="/api/asset-library", tags=["asset-library"])
+
+# Images root — same as VFE's IMAGES_ROOT
+IMAGES_ROOT = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "images")
+)
 
 
 class SkipRequest(BaseModel):
@@ -11,8 +21,9 @@ class SkipRequest(BaseModel):
 
 
 # --- Cache layer: tag cloud changes rarely, no need to re-fetch every hit ---
-_cache: dict | None = None
-_cache_ts: float = 0
+# Keyed by material_type ("all"/"normal"/"spicy") so each library has its own cache.
+_cache: dict[str, dict] = {}
+_cache_ts: dict[str, float] = {}
 CACHE_TTL = 300  # 5 minutes
 
 
@@ -23,13 +34,13 @@ def _normalize_tag(raw: str) -> str:
     return raw.strip()
 
 
-async def _get_normalized_cloud() -> dict:
-    global _cache, _cache_ts
+async def _get_normalized_cloud(material_type: str | None = None) -> dict:
+    key = material_type or "all"
     now = time.monotonic()
-    if _cache is not None and (now - _cache_ts < CACHE_TTL):
-        return _cache
+    if key in _cache and (now - _cache_ts.get(key, 0) < CACHE_TTL):
+        return _cache[key]
 
-    raw = await vfe_client.get_tag_cloud()
+    raw = await vfe_client.get_tag_cloud(material_type=material_type)
     dims_raw = raw.get("dimensions", {})
     dims_clean: dict[str, list[dict]] = {}
 
@@ -48,16 +59,17 @@ async def _get_normalized_cloud() -> dict:
         "total_images": raw.get("total_images", 0),
         "dimensions": dims_clean,
     }
-    _cache = result
-    _cache_ts = now
+    _cache[key] = result
+    _cache_ts[key] = now
     return result
 
 
 @router.get("/tags")
-async def get_tag_cloud(min_count: int = 2):
-    """Return normalized tag cloud. min_count filters low-frequency tags."""
+async def get_tag_cloud(min_count: int = 2, material_type: str | None = None):
+    """Return normalized tag cloud. min_count filters low-frequency tags.
+    material_type ('normal'/'spicy') scopes to one asset library."""
     try:
-        full = await _get_normalized_cloud()
+        full = await _get_normalized_cloud(material_type)
         if min_count <= 1:
             return full
         trimmed = {
@@ -75,10 +87,10 @@ async def get_tag_cloud(min_count: int = 2):
 
 
 @router.get("/tags/{dim}")
-async def get_dim_tags(dim: str, min_count: int = 1):
+async def get_dim_tags(dim: str, min_count: int = 1, material_type: str | None = None):
     """Lazy-load tags for a single dimension."""
     try:
-        full = await _get_normalized_cloud()
+        full = await _get_normalized_cloud(material_type)
         tags = full["dimensions"].get(dim, [])
         if min_count > 1:
             tags = [t for t in tags if t["count"] >= min_count]
@@ -94,12 +106,14 @@ async def search_images(
     character_name: str | None = None,
     limit: int = 50,
     offset: int = 0,
+    material_type: str | None = None,
 ):
     try:
         return await vfe_client.search_images(
             tag=tag, dimension=dimension,
             character_name=character_name,
             limit=limit, offset=offset,
+            material_type=material_type,
         )
     except Exception as e:
         return {"total": 0, "items": [], "error": str(e)}
@@ -119,3 +133,36 @@ async def skip_image(data: SkipRequest):
         return await vfe_client.skip_image(data.path)
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+_MIME_MAP = {
+    ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+    ".png": "image/png", ".webp": "image/webp",
+    ".gif": "image/gif", ".bmp": "image/bmp",
+}
+
+
+@router.get("/serve")
+def serve_image(path: str, w: int = 0):
+    """Proxy asset images from the VFE image service tunnel.
+
+    ecjoy no longer has the files locally; VFE on ecs50 owns them, reachable
+    only via the internal 18022 tunnel. We must PROXY the bytes (not 302) —
+    the browser cannot reach ecjoy's localhost tunnel.
+    """
+    if not path or "\0" in path:
+        return {"error": "bad_path"}
+    cleaned = path.lstrip("/\\")
+    if cleaned.startswith("..") or os.path.isabs(cleaned):
+        return {"error": "forbidden"}
+    url = "http://127.0.0.1:18022/api/images/serve?path=" + quote(cleaned, safe="/")
+    if w and w >= 32:
+        url += f"&w={int(w)}"
+    try:
+        with urllib.request.urlopen(url, timeout=30) as r:
+            data = r.read()
+            ctype = r.headers.get("Content-Type", "image/jpeg")
+    except Exception as e:
+        return Response(content=f"upstream fetch failed: {e}", status_code=502)
+    return Response(content=data, media_type=ctype,
+                    headers={"Cache-Control": "public, max-age=86400"})

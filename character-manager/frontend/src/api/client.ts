@@ -30,15 +30,94 @@ export function setConfirmEnabled(enabled: boolean): void {
   localStorage.setItem(CONFIRM_KEY, enabled ? 'true' : 'false');
 }
 
+const HARD_DELETE_KEY = 'cm_allow_hard_delete';
+export function getHardDeleteEnabled(): boolean {
+  return localStorage.getItem(HARD_DELETE_KEY) === 'true'; // 默认 false（只能软删）
+}
+export function setHardDeleteEnabled(enabled: boolean): void {
+  localStorage.setItem(HARD_DELETE_KEY, enabled ? 'true' : 'false');
+}
+
+const TOKEN_KEY = 'cm_auth_token';
+const USER_KEY = 'cm_auth_user';
+export function getToken(): string { return localStorage.getItem(TOKEN_KEY) || ''; }
+export function getCurrentUser(): string { return localStorage.getItem(USER_KEY) || ''; }
+export function setAuth(token: string, username: string): void {
+  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(USER_KEY, username);
+}
+export function clearAuth(): void {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+}
+
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set('X-Data-Source', getDataSource());
+  const token = getToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
   const res = await fetch(`${BASE}${url}`, { ...init, headers });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
   return res.json();
 }
 
+export interface ModelArkCfg {
+  enabled: boolean;
+  api_key: string;
+  endpoint_id: string;
+  base_url: string;
+  access_key_id: string;
+  secret_access_key: string;
+  host: string;
+  region: string;
+  moderation_skip: boolean;
+  project: string;
+}
+
 export const api = {
+  uploadMedia: (characterId: number, kind: 'image' | 'audio' | 'video', file: File) => {
+    const fd = new FormData();
+    fd.append('character_id', String(characterId));
+    fd.append('kind', kind);
+    fd.append('file', file);
+    return fetchJson<{ status: string; url?: string; kind?: string; message?: string }>(
+      '/api/media/upload', { method: 'POST', body: fd });
+  },
+
+  setTags: (characterId: number, tags: string[]) =>
+    fetchJson<{ status: string; tags?: string[]; message?: string }>('/api/characters/tags', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ character_id: characterId, tags }),
+    }),
+
+  setFeatured: (characterId: number, featured: boolean) =>
+    fetchJson<{ status: string; featured?: boolean; message?: string }>('/api/characters/featured', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ character_id: characterId, featured }),
+    }),
+
+  authRegister: (username: string, password: string, inviteCode: string) =>
+    fetchJson<{ status: string; username?: string; token?: string; message?: string }>('/api/auth/register', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, invite_code: inviteCode }),
+    }),
+
+  authLogin: (username: string, password: string) =>
+    fetchJson<{ status: string; username?: string; token?: string; message?: string }>('/api/auth/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    }),
+
+  getModelArkConfig: () =>
+    fetchJson<{ status: string; config: ModelArkCfg }>('/api/config/modelark'),
+
+  saveModelArkConfig: (cfg: ModelArkCfg) =>
+    fetchJson<{ status: string; config: ModelArkCfg }>('/api/config/modelark', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg),
+    }),
+
   getDataSources: () =>
     fetchJson<{ sources: string[]; default: string }>('/api/datasources'),
 
@@ -204,6 +283,8 @@ export const api = {
 
   getIndex: (showAll = true) =>
     fetchJson<Record<string, CharacterIndex>>(`/api/index?show_all=${showAll}`),
+  getCharacterIndex: (name: string, showAll = true) =>
+    fetchJson<Record<string, CharacterIndex>>(`/api/index?show_all=${showAll}&name=${encodeURIComponent(name)}`),
 
   getCategories: (showAll = true) =>
     fetchJson<CategoryCount[]>(`/api/characters/categories?show_all=${showAll}`),
@@ -211,9 +292,22 @@ export const api = {
   getCharacterList: (showAll = true) =>
     fetchJson<CharacterListItem[]>(`/api/characters/list?show_all=${showAll}`),
 
-  createCharacter: (data: { name: string; category?: string; description?: string }) =>
+  createCharacter: (data: { name: string; category?: string; description?: string; attributes?: Record<string, string> }) =>
     fetchJson<{ status: string; id: number | null }>('/api/characters', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+
+  updateCharacterProfile: (data: {
+    character_id: number;
+    name?: string;
+    category?: string;
+    description?: string;
+    attributes?: Record<string, string>;
+  }) =>
+    fetchJson<{ status: string; name?: string; message?: string }>('/api/characters/profile', {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }),
@@ -248,6 +342,46 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ character_id: characterId }),
+    }),
+
+  setTier: (name: string, imageUrls: string[], tier: 'paid' | 'free') =>
+    fetchJson<{ status: string; changed?: number; message?: string }>('/api/media/set-tier', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, image_urls: imageUrls, tier }),
+    }),
+
+  adoptBatch: (name: string, imageUrls: string[], tier?: 'paid' | 'free') =>
+    fetchJson<{ status: string; adopted?: number; message?: string }>('/api/media/adopt-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, image_urls: imageUrls, tier: tier ?? null }),
+    }),
+
+  deleteBatch: (name: string, imageUrls: string[], hard: boolean = false) =>
+    fetchJson<{ status: string; mode?: string; trashed?: number; removed?: number; message?: string }>('/api/media/delete-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, image_urls: imageUrls, hard }),
+    }),
+
+  pushToModelArk: (characterName: string, urls: string[]) =>
+    fetchJson<{
+      status: string;
+      group_id?: string;
+      results?: { url: string; asset_id: string | null; status: string; ok: boolean; error?: string }[];
+      message?: string;
+    }>('/api/modelark/push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ character_name: characterName, urls }),
+    }),
+
+  restoreBatch: (name: string, imageUrls: string[]) =>
+    fetchJson<{ status: string; restored?: number; message?: string }>('/api/media/restore-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, image_urls: imageUrls }),
     }),
 
   restore: (name: string, imageUrl: string) =>
@@ -291,12 +425,12 @@ export const api = {
       body: JSON.stringify({ id }),
     }),
 
-  getTagCloud: (minCount = 3) =>
-    fetchJson<TagCloud>(`/api/asset-library/tags?min_count=${minCount}`),
+  getTagCloud: (minCount = 3, materialType?: string) =>
+    fetchJson<TagCloud>(`/api/asset-library/tags?min_count=${minCount}${materialType ? `&material_type=${materialType}` : ''}`),
 
-  getDimTags: (dim: string, minCount = 1) =>
+  getDimTags: (dim: string, minCount = 1, materialType?: string) =>
     fetchJson<{ dimension: string; total: number; tags: { tag: string; count: number }[]; error?: string }>(
-      `/api/asset-library/tags/${dim}?min_count=${minCount}`
+      `/api/asset-library/tags/${dim}?min_count=${minCount}${materialType ? `&material_type=${materialType}` : ''}`
     ),
 
   searchAssetLibrary: (params: {
@@ -304,12 +438,14 @@ export const api = {
     dimension?: string;
     limit?: number;
     offset?: number;
+    materialType?: string;
   }) => {
     const qs = new URLSearchParams();
     if (params.tag) qs.set('tag', params.tag);
     if (params.dimension) qs.set('dimension', params.dimension);
     qs.set('limit', String(params.limit ?? 50));
     qs.set('offset', String(params.offset ?? 0));
+    if (params.materialType) qs.set('material_type', params.materialType);
     return fetchJson<{ total: number; items: VFESearchItem[] }>(
       `/api/asset-library/images?${qs}`
     );
@@ -354,6 +490,7 @@ export const api = {
     resolution?: string;
     seed?: number;
     batch_count?: number;
+    engine?: string;
   }) =>
     fetchJson<{ status: string; task_ids: string[]; errors: string[] }>(
       '/api/generation/create', {

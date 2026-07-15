@@ -4,11 +4,15 @@ import threading
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 import psycopg2.extras
 from config import settings
-from database import init_pool, close_pool, get_conn, put_conn, set_data_source
+from database import init_pool, close_pool, get_conn, put_conn, set_data_source, fetch_merged, get_data_source
 from routers import characters_router, media_router, reference_router, asset_library_router, generation_router, scripts_router, comfyui_single_router, avatar_router, audio_router, batch_generate_router
-from services import vfe_client, smartstudio_client, script_runner
+from routers.config import router as config_router
+from routers.auth import router as auth_router
+from routers.modelark import router as modelark_router
+from services import smartstudio_client, script_runner
 from services import batch_processing
 from services.supabase_storage import ensure_bucket_exists
 
@@ -58,6 +62,8 @@ async def lifespan(app: FastAPI):
     # cut off by a previous crash/restart. Best-effort: never fatal.
     try:
         batch_processing.recover_on_startup()
+        _r = batch_processing.resume_job(None)
+        print(f"[startup] batch auto-resume: {_r}")
     except Exception as e:
         print(f"[batch] startup recovery failed: {e}")
 
@@ -74,12 +80,13 @@ async def lifespan(app: FastAPI):
     signal.signal(signal.SIGINT, lambda *_: _cleanup())
 
     yield
-    await vfe_client.close_client()
     await smartstudio_client.close_client()
     close_pool()
 
 
 app = FastAPI(title="Character Manager", lifespan=lifespan)
+
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 app.add_middleware(
     CORSMiddleware,
@@ -99,6 +106,9 @@ app.include_router(comfyui_single_router)
 app.include_router(avatar_router)
 app.include_router(batch_generate_router)
 app.include_router(audio_router)
+app.include_router(config_router)
+app.include_router(auth_router)
+app.include_router(modelark_router)
 
 
 @app.middleware("http")
@@ -114,36 +124,43 @@ async def data_source_middleware(request: Request, call_next):
 @app.get("/api/datasources")
 async def list_datasources():
     return {
-        "sources": list(settings.datasources.keys()),
+        "sources": settings.public_datasources,
         "default": settings.default_data_source,
     }
 
 
 @app.get("/api/index")
-async def get_index(show_all: bool = False):
+async def get_index(show_all: bool = False, name: str | None = None):
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             status_filter = "" if show_all else "AND COALESCE(character_status, 'pending') = 'online'"
-            cur.execute(
-                f"""SELECT id, name, category, description, attributes, media,
+            creator_filter = "" if get_data_source() == "ecjoy" else "AND creator_id IN ('official', 'system')"
+            # name=<one char> -> build the index for just that character (cheap refresh)
+            name_filter = "AND name = %s" if name else ""
+            chars = fetch_merged(
+                f"""SELECT id, name, category, description, attributes, media, tags,
                           content_rating, sort_priority, avatar_url, voice_id,
                           COALESCE(character_status, 'pending') as character_status
                    FROM characters
                    WHERE (is_deleted IS NULL OR is_deleted = FALSE)
-                     AND creator_id = 'official'
+                     {creator_filter}
                      {status_filter}
-                   ORDER BY name"""
+                     {name_filter}
+                   ORDER BY name""",
+                (name,) if name else None
             )
-            chars = cur.fetchall()
 
-            cur.execute(
-                """SELECT character_id, result_url, task_type, status, created_at
+            gen_filter = "AND character_id = ANY(%s)" if name else ""
+            gen_params = ([c["id"] for c in chars],) if name else None
+            gen_tasks = fetch_merged(
+                f"""SELECT character_id, result_url, task_type, status, created_at
                    FROM media_generation_tasks
                    WHERE status = 'completed' AND result_url IS NOT NULL
-                   ORDER BY created_at DESC"""
+                     {gen_filter}
+                   ORDER BY created_at DESC""",
+                gen_params
             )
-            gen_tasks = cur.fetchall()
 
         gen_by_char: dict[int, list] = {}
         for t in gen_tasks:
@@ -173,7 +190,24 @@ async def get_index(show_all: bool = False):
             # Items without a media_status (legacy) count as published.
             published = [m for m in active if not _is_pending(m)]
 
-            profile_images = [m["url"] for m in published if m.get("type") == "image" and m.get("url")]
+            def _is_paid(mm):
+                t = mm.get("tier")
+                if t == "free":
+                    return False
+                return t == "paid" or mm.get("source") == "imageedit"
+
+            def _akind(m):
+                return m.get("asset_kind")
+            costume_images = [m["url"] for m in published
+                              if m.get("type") == "image" and m.get("url") and _akind(m) == "costume"]
+            scene_images = [m["url"] for m in published
+                            if m.get("type") == "image" and m.get("url") and _akind(m) == "scene"]
+            prop_images = [m["url"] for m in published
+                           if m.get("type") == "image" and m.get("url") and _akind(m) == "prop"]
+            paid_images = [m["url"] for m in published
+                           if m.get("type") == "image" and m.get("url") and _is_paid(m) and not _akind(m)]
+            profile_images = [m["url"] for m in published
+                              if m.get("type") == "image" and m.get("url") and not _is_paid(m) and not _akind(m)]
             profile_videos = [m["url"] for m in published if m.get("type") == "video" and m.get("url")]
             swapface_images = [m["url"] for m in published if m.get("type") == "swapface_image" and m.get("url")]
 
@@ -197,6 +231,7 @@ async def get_index(show_all: bool = False):
                         "url": m["url"],
                         "type": m.get("type", "image"),
                         "source": m.get("source", ""),
+                        "created_at": m.get("created_at"),
                     }
                     for m in active
                     if isinstance(m, dict) and m.get("url") and _is_pending(m)
@@ -219,8 +254,14 @@ async def get_index(show_all: bool = False):
                 "content_rating": c["content_rating"] or "sfw",
                 "character_status": c["character_status"] or "pending",
                 "avatar_url": c["avatar_url"] or "",
+                "featured": bool(c.get("featured")),
+                "tags": [t for t in (_parse_json(c.get("tags")) or []) if isinstance(t, str)],
                 "voice_id": c["voice_id"] or "",
                 "profile_images": profile_images,
+                "paid_images": paid_images,
+                "costume_images": costume_images,
+                "scene_images": scene_images,
+                "prop_images": prop_images,
                 "profile_videos": profile_videos,
                 "generated_images": generated_images,
                 "all_images": profile_images + generated_images,
@@ -231,6 +272,17 @@ async def get_index(show_all: bool = False):
                 "media_status_map": media_status_map,
                 "pending_media": pending_media,
             }
+        # featured 是 ecjoy 源上的全局精品标记 (tiktok 源的表无此列且不可改),
+        # 单独在当前(ecjoy)连接查一次, 覆盖各角色的 featured。
+        featured_ids = set()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id FROM characters WHERE featured = true")
+                featured_ids = {r[0] for r in cur.fetchall()}
+        except Exception:
+            pass
+        for _e in index.values():
+            _e["featured"] = _e["id"] in featured_ids
         return index
     finally:
         put_conn(conn)

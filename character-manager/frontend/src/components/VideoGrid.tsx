@@ -8,9 +8,10 @@ interface Props {
   characterId: number;
   mediaStatusMap?: Record<string, string>;
   confirmEnabled: boolean;
+  allowHardDelete: boolean;
 }
 
-export default function VideoGrid({ videos, characterName, characterId, onRefresh, mediaStatusMap, confirmEnabled }: Props & { onRefresh: () => void }) {
+export default function VideoGrid({ videos, characterName, characterId, onRefresh, mediaStatusMap, confirmEnabled, allowHardDelete }: Props & { onRefresh: () => void }) {
   if (!videos.length) return <div className="empty">No videos</div>;
 
   const handleDelete = async (e: React.MouseEvent, url: string) => {
@@ -51,6 +52,7 @@ export default function VideoGrid({ videos, characterName, characterId, onRefres
             onHardDelete={(e) => handleHardDelete(e, url)}
             onStatusToggle={(e) => handleStatusToggle(e, url)}
             statusIcon={statusIcons[status] || '⚪'}
+            allowHardDelete={allowHardDelete}
           />
         );
       })}
@@ -58,12 +60,13 @@ export default function VideoGrid({ videos, characterName, characterId, onRefres
   );
 }
 
-function VideoCard({ url, fname, status, onDelete, onHardDelete, onStatusToggle, statusIcon }: {
+function VideoCard({ url, fname, status, onDelete, onHardDelete, onStatusToggle, statusIcon, allowHardDelete }: {
   url: string; fname: string; status: string;
   onDelete: (e: React.MouseEvent) => void;
   onHardDelete: (e: React.MouseEvent) => void;
   onStatusToggle: (e: React.MouseEvent) => void;
   statusIcon: string;
+  allowHardDelete: boolean;
 }) {
   const vidRef = useRef<HTMLVideoElement>(null);
 
@@ -72,7 +75,7 @@ function VideoCard({ url, fname, status, onDelete, onHardDelete, onStatusToggle,
       <div className="card-badge">video</div>
       <button className="card-status-btn" onClick={onStatusToggle} title={`状态: ${status}`}>{statusIcon}</button>
     <button className="card-del" onClick={onDelete} title="Move to trash (recoverable)">✕</button>
-    <button className="card-hard-del" onClick={onHardDelete} title="Permanent delete (DB + OSS)">🗑</button>
+    {allowHardDelete && <button className="card-hard-del" onClick={onHardDelete} title="Permanent delete (DB + OSS)">🗑</button>}
       <video
         ref={vidRef}
         src={url}

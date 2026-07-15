@@ -12,7 +12,7 @@
 .modal-content video { max-width: 95vw; max-height: 95vh; display: block; }
 .modal-close {
   position: fixed; top: 20px; left: 20px;
-  background: #0f3460; color: #fff; border: none;
+  background: #26262c; color: #fff; border: none;
   padding: 8px 20px; border-radius: 6px;
   cursor: pointer; font-size: 14px; z-index: 10000;
 }

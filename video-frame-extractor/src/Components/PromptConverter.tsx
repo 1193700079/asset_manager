@@ -28,6 +28,7 @@ export default function PromptConverter() {
     const [models, setModels] = useState<{id: string, label: string}[]>([]);
     const [selectedModels, setSelectedModels] = useState<string[]>([]);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [convertStats, setConvertStats] = useState<{ success: number; failed: number; refused: number; exhausted: number } | null>(null);
     const abortRef = useRef<AbortController | null>(null);
 
     const limit = 100;
@@ -118,15 +119,28 @@ export default function PromptConverter() {
                 }
 
                 switch (event.type) {
+                    case "busy":
+                        setErrorMsg(event.message || "已有一个批量转换任务在进行中，请等待其完成");
+                        setState("error");
+                        return;
                     case "start":
                         if (event.total) {
                             setProgressTotal(event.total);
                         }
+                        setConvertStats({ success: 0, failed: 0, refused: 0, exhausted: 0 });
                         break;
                     case "progress":
                         setProgress(event.current || 0);
                         if (event.total && event.total > 0) {
                             setProgressTotal(event.total);
+                        }
+                        if (typeof event.success === "number") {
+                            setConvertStats({
+                                success: event.success || 0,
+                                failed: event.failed || 0,
+                                refused: event.refused || 0,
+                                exhausted: 0,
+                            });
                         }
                         break;
                     case "result":
@@ -152,6 +166,12 @@ export default function PromptConverter() {
                         }
                         break;
                     case "done":
+                        setConvertStats({
+                            success: event.success || 0,
+                            failed: event.failed || 0,
+                            refused: event.refused || 0,
+                            exhausted: event.exhausted || 0,
+                        });
                         setState("done");
                         break;
                 }
@@ -162,8 +182,10 @@ export default function PromptConverter() {
     }, []);
 
     const handleStart = useCallback(async () => {
+        if (state === "running") return;
         if (selected.size === 0 || selectedModels.length === 0) return;
         setState("running");
+        setConvertStats(null);
         setErrorMsg(null);
         setProgress(0);
         setProgressTotal(selected.size);
@@ -191,11 +213,13 @@ export default function PromptConverter() {
         } finally {
             abortRef.current = null;
         }
-    }, [selected, selectedModels, processSSEStream]);
+    }, [state, selected, selectedModels, processSSEStream]);
 
     const handleConvertAll = useCallback(async () => {
+        if (state === "running") return;
         if (selectedModels.length === 0) return;
         setState("running");
+        setConvertStats(null);
         setErrorMsg(null);
         setProgress(0);
         // Don't pre-set total: let SSE "start" event provide the authoritative total
@@ -227,7 +251,7 @@ export default function PromptConverter() {
             // Refresh frame list after completion
             fetchFrames(page);
         }
-    }, [selectedModels, processSSEStream, fetchFrames, page]);
+    }, [state, selectedModels, processSSEStream, fetchFrames, page]);
 
     const handleStop = () => {
         abortRef.current?.abort();
@@ -485,6 +509,12 @@ export default function PromptConverter() {
                         {progressTotal === 0
                             ? "正在准备..."
                             : `正在转换... ${progress}/${progressTotal} 已完成`}
+                        {convertStats && (
+                            <span style={{ marginLeft: 8, color: "#888" }}>
+                                ✓{convertStats.success} ✗{convertStats.failed}
+                                {convertStats.refused > 0 && ` (拒答${convertStats.refused})`}
+                            </span>
+                        )}
                     </div>
                 </div>
             )}
@@ -492,6 +522,13 @@ export default function PromptConverter() {
             {state === "done" && progress > 0 && (
                 <div style={{ fontSize: 12, color: "#4ade80", margin: "4px 0" }}>
                     ✓ 转换完成，共处理 {progress} / {progressTotal} 项
+                    {convertStats && (
+                        <span style={{ color: "#9ca3af", marginLeft: 6 }}>
+                            （成功 {convertStats.success} / 失败 {convertStats.failed}
+                            {convertStats.refused > 0 && `，其中拒答 ${convertStats.refused}`}
+                            {convertStats.exhausted > 0 && `；已永久跳过 ${convertStats.exhausted} 条达上限`}）
+                        </span>
+                    )}
                     {progress < progressTotal && (
                         <span style={{ color: "#fbbf24", marginLeft: 6 }}>(部分完成)</span>
                     )}

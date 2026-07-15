@@ -1,8 +1,10 @@
 import json
-from fastapi import APIRouter, Query
+from typing import Any
+from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
 import psycopg2.extras
-from database import get_conn, put_conn
+from database import get_conn, put_conn, fetch_merged, get_data_source, conn_for, put_conn_named
+from services import auth
 from models import CharacterBase, CharacterOut, CharacterListItem, CategoryCount
 
 router = APIRouter(prefix="/api/characters", tags=["characters"])
@@ -39,77 +41,59 @@ def _strip_pending_media(media_list):
 
 @router.get("", response_model=list[CharacterOut])
 async def list_characters(category: str | None = None, show_all: bool = False):
-    conn = get_conn()
-    try:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            status_filter = "" if show_all else "AND COALESCE(character_status, 'pending') = 'online'"
-            if category:
-                cur.execute(
-                    f"""SELECT id, name, category, description, attributes, media,
-                              content_rating, sort_priority
-                       FROM characters
-                       WHERE (is_deleted IS NULL OR is_deleted = FALSE)
-                         AND creator_id = 'official' AND category = %s
-                         {status_filter}
-                       ORDER BY name""",
-                    (category,),
-                )
-            else:
-                cur.execute(
-                    f"""SELECT id, name, category, description, attributes, media,
-                              content_rating, sort_priority
-                       FROM characters
-                       WHERE (is_deleted IS NULL OR is_deleted = FALSE)
-                         AND creator_id = 'official'
-                         {status_filter}
-                       ORDER BY name"""
-                )
-            rows = cur.fetchall()
-        for r in rows:
-            r["attributes"] = _parse_json(r["attributes"])
-            media = _filter_active_media(_parse_json(r["media"]))
-            if not show_all:
-                media = _strip_pending_media(media)
-            r["media"] = media
-        return rows
-    finally:
-        put_conn(conn)
+    status_filter = "" if show_all else "AND COALESCE(character_status, 'pending') = 'online'"
+    creator_filter = "" if get_data_source() == "ecjoy" else "AND creator_id IN ('official', 'system')"
+    base = f"""SELECT id, name, category, description, attributes, media,
+                      content_rating, sort_priority
+               FROM characters
+               WHERE (is_deleted IS NULL OR is_deleted = FALSE)
+                 {{creator}}
+                 {{cat}}
+                 {status_filter}"""
+    if category:
+        rows = fetch_merged(base.format(creator=creator_filter, cat="AND category = %s"), (category,))
+    else:
+        rows = fetch_merged(base.format(creator=creator_filter, cat=""))
+    for r in rows:
+        r["attributes"] = _parse_json(r["attributes"])
+        media = _filter_active_media(_parse_json(r["media"]))
+        if not show_all:
+            media = _strip_pending_media(media)
+        r["media"] = media
+    rows.sort(key=lambda r: (r.get("name") or "").lower())
+    return rows
 
 
 @router.get("/list", response_model=list[CharacterListItem])
 async def list_characters_simple(show_all: bool = False):
-    conn = get_conn()
-    try:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            status_filter = "" if show_all else "AND COALESCE(character_status, 'pending') = 'online'"
-            cur.execute(
-                f"""SELECT id, name, category FROM characters
-                   WHERE (is_deleted IS NULL OR is_deleted = FALSE)
-                     AND creator_id = 'official'
-                     {status_filter}
-                   ORDER BY name"""
-            )
-            return cur.fetchall()
-    finally:
-        put_conn(conn)
+    status_filter = "" if show_all else "AND COALESCE(character_status, 'pending') = 'online'"
+    creator_filter = "" if get_data_source() == "ecjoy" else "AND creator_id IN ('official', 'system')"
+    rows = fetch_merged(
+        f"""SELECT id, name, category FROM characters
+           WHERE (is_deleted IS NULL OR is_deleted = FALSE)
+             {creator_filter}
+             {status_filter}"""
+    )
+    rows.sort(key=lambda r: (r.get("name") or "").lower())
+    return rows
 
 
 @router.get("/categories", response_model=list[CategoryCount])
 async def get_categories(show_all: bool = False):
-    conn = get_conn()
-    try:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            status_filter = "" if show_all else "AND COALESCE(character_status, 'pending') = 'online'"
-            cur.execute(
-                f"""SELECT category, count(*) as count FROM characters
-                   WHERE (is_deleted IS NULL OR is_deleted = FALSE)
-                     AND creator_id = 'official'
-                     {status_filter}
-                   GROUP BY category ORDER BY count(*) DESC"""
-            )
-            return cur.fetchall()
-    finally:
-        put_conn(conn)
+    status_filter = "" if show_all else "AND COALESCE(character_status, 'pending') = 'online'"
+    creator_filter = "" if get_data_source() == "ecjoy" else "AND creator_id IN ('official', 'system')"
+    rows = fetch_merged(
+        f"""SELECT category, count(*) as count FROM characters
+           WHERE (is_deleted IS NULL OR is_deleted = FALSE)
+             {creator_filter}
+             {status_filter}
+           GROUP BY category"""
+    )
+    agg: dict[str, int] = {}
+    for r in rows:
+        agg[r["category"]] = agg.get(r["category"], 0) + int(r["count"])
+    return [{"category": k, "count": v}
+            for k, v in sorted(agg.items(), key=lambda x: x[1], reverse=True)]
 
 
 @router.post("", response_model=dict)
@@ -135,7 +119,7 @@ async def create_character(data: CharacterBase):
 
 @router.delete("/{name}")
 async def delete_character(name: str):
-    conn = get_conn()
+    _pool, conn = conn_for(name=name)
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -145,13 +129,13 @@ async def delete_character(name: str):
         conn.commit()
         return {"status": "ok"}
     finally:
-        put_conn(conn)
+        put_conn_named(_pool, conn)
 
 
 @router.post("/{name}/clear")
 async def clear_character(name: str):
     """Clear a character's avatar and all media, keeping the record."""
-    conn = get_conn()
+    _pool, conn = conn_for(name=name)
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -161,7 +145,7 @@ async def clear_character(name: str):
         conn.commit()
         return {"status": "ok"}
     finally:
-        put_conn(conn)
+        put_conn_named(_pool, conn)
 
 
 class StatusUpdateRequest(BaseModel):
@@ -208,3 +192,105 @@ async def update_character_voice(data: VoiceUpdateRequest):
         return {"status": "ok", "voice_id": voice_id}
     finally:
         put_conn(conn)
+
+
+class ProfileUpdateRequest(BaseModel):
+    character_id: int
+    current_name: str | None = None
+    name: str | None = None
+    category: str | None = None
+    description: str | None = None
+    attributes: dict[str, Any] | None = None
+
+
+@router.put("/profile")
+async def update_character_profile(data: ProfileUpdateRequest):
+    """Edit a character's editable profile fields (name, category, description,
+    attributes). Only the fields provided (non-null) are updated."""
+    sets: list[str] = []
+    params: list = []
+    if data.name is not None:
+        new_name = data.name.strip()
+        if not new_name:
+            return {"status": "error", "message": "名称不能为空"}
+        sets.append("name = %s")
+        params.append(new_name)
+    if data.category is not None:
+        sets.append("category = %s")
+        params.append(data.category.strip() or "uncategorized")
+    if data.description is not None:
+        sets.append("description = %s")
+        params.append(data.description)
+    if data.attributes is not None:
+        sets.append("attributes = %s::json")
+        params.append(json.dumps(data.attributes))
+
+    if not sets:
+        return {"status": "error", "message": "没有需要更新的字段"}
+
+    params.append(data.character_id)
+    _pool, conn = (conn_for(name=data.current_name) if data.current_name else conn_for(cid=data.character_id))
+    try:
+        with conn.cursor() as cur:
+            try:
+                cur.execute(
+                    f"UPDATE characters SET {', '.join(sets)} WHERE id = %s RETURNING name",
+                    params,
+                )
+                row = cur.fetchone()
+            except psycopg2.errors.UniqueViolation:
+                conn.rollback()
+                return {"status": "error", "message": "该名称已被占用"}
+        conn.commit()
+        if not row:
+            return {"status": "error", "message": "角色不存在"}
+        return {"status": "ok", "name": row[0]}
+    finally:
+        put_conn_named(_pool, conn)
+
+
+class FeaturedRequest(BaseModel):
+    character_id: int
+    featured: bool
+
+
+@router.post("/featured")
+async def set_featured(data: FeaturedRequest, request: Request):
+    """标记/取消角色为精品 (★)。"""
+    _pool, conn = conn_for(cid=data.character_id)
+    try:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE characters SET featured = %s WHERE id = %s",
+                        (data.featured, data.character_id))
+        conn.commit()
+    finally:
+        put_conn_named(_pool, conn)
+    user = auth.user_from_request(request)
+    auth.log_action(user, "featured" if data.featured else "unfeatured", str(data.character_id))
+    return {"status": "ok", "featured": data.featured}
+
+
+class TagsRequest(BaseModel):
+    character_id: int
+    tags: list[str]
+
+
+@router.post("/tags")
+async def set_tags(data: TagsRequest, request: Request):
+    """设置角色的自定义标签（整组覆盖，去重/去空/限长）。"""
+    clean: list[str] = []
+    for t in data.tags:
+        t = (t or "").strip()
+        if t and t not in clean and len(t) <= 20:
+            clean.append(t)
+    _pool, conn = conn_for(cid=data.character_id)
+    try:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE characters SET tags = %s::json WHERE id = %s",
+                        (json.dumps(clean), data.character_id))
+        conn.commit()
+    finally:
+        put_conn_named(_pool, conn)
+    user = auth.user_from_request(request)
+    auth.log_action(user, "set-tags", str(data.character_id))
+    return {"status": "ok", "tags": clean}

@@ -107,6 +107,10 @@ async function initDB() {
     await pool.query(`ALTER TABLE saved_frames ADD COLUMN IF NOT EXISTS batch_id TEXT`);
     // Migration: record which model generated the video_prompt
     await pool.query(`ALTER TABLE saved_frames ADD COLUMN IF NOT EXISTS video_prompt_model TEXT`);
+    // Migration: count failed video_prompt conversion attempts so that frames
+    // which permanently fail (model refusal / moderation) are parked after a
+    // few tries instead of being re-scanned forever by /api/prompts/convert-to-video.
+    await pool.query(`ALTER TABLE saved_frames ADD COLUMN IF NOT EXISTS video_prompt_attempts INTEGER DEFAULT 0`);
     // Migration: distinguish spicy vs normal source material so the UI can
     // render different annotation flows (14-dim tagging vs reverse prompt).
     await pool.query(`ALTER TABLE saved_frames ADD COLUMN IF NOT EXISTS material_type TEXT DEFAULT 'spicy'`);
@@ -4250,9 +4254,23 @@ app.post('/api/image/analyze/batch', express.json(), async (req, res) => {
                         }
                     }
 
+                    // Generate video_prompt for spicy materials
+                    const batchMaterialType = img.materialType || inferMaterialType(imagePath);
+                    let batchVideoPrompt = null;
+                    let batchVideoPromptModel = null;
+                    if (batchMaterialType === 'spicy' && aiResult?.prompt) {
+                        try {
+                            const { results, modelId: vpModelId } = await convertImagePromptToVideo([aiResult.prompt]);
+                            batchVideoPrompt = results[0] || null;
+                            batchVideoPromptModel = vpModelId || null;
+                        } catch (vpErr) {
+                            console.warn(`[image-batch] video_prompt generation failed for ${imagePath}:`, vpErr?.message);
+                        }
+                    }
+
                     await pool.query(
-                        `INSERT INTO saved_frames (video_path, video_name, timestamp, oss_url, oss_key, prompt, pose, pose_en, tags, dimensions, style, description, format, model_id, created_at)
-                         VALUES ($1, $2, -1, '', '', $3, $4, $5, $6, $7, $8, $9, 'image_annotation', $10, NOW())`,
+                        `INSERT INTO saved_frames (video_path, video_name, timestamp, oss_url, oss_key, prompt, pose, pose_en, tags, dimensions, style, description, format, model_id, material_type, video_prompt, video_prompt_model, created_at)
+                         VALUES ($1, $2, -1, '', '', $3, $4, $5, $6, $7, $8, $9, 'image_annotation', $10, $11, $12, $13, NOW())`,
                         [
                             imagePath, imageName,
                             aiResult?.prompt || null,
@@ -4263,10 +4281,13 @@ app.post('/api/image/analyze/batch', express.json(), async (req, res) => {
                             aiResult?.style || null,
                             aiResult?.description || null,
                             annotateModelUsed || null,
+                            batchMaterialType,
+                            batchVideoPrompt,
+                            batchVideoPromptModel,
                         ]
                     );
 
-                    sendEvent('item_done', { index: globalIdx, imagePath, imageName, result: 'annotated', ...(annotateModelUsed ? { model_used: annotateModelUsed } : {}), ...(aiResult?.voters ? { voters: aiResult.voters } : {}) });
+                    sendEvent('item_done', { index: globalIdx, imagePath, imageName, result: 'annotated', ...(annotateModelUsed ? { model_used: annotateModelUsed } : {}), ...(aiResult?.voters ? { voters: aiResult.voters } : {}), ...(batchVideoPrompt ? { video_prompt: batchVideoPrompt } : {}) });
                     imageBatchProgress.annotated++;
                     queryCache.invalidate('images_annotated');
                 } catch (err) {
@@ -4361,6 +4382,19 @@ app.post('/api/image/analyze/single', express.json(), async (req, res) => {
             }
         }
 
+        // Generate video_prompt for spicy materials
+        let videoPrompt = null;
+        let videoPromptModel = null;
+        if (materialType === 'spicy' && aiResult?.prompt) {
+            try {
+                const { results, modelId: vpModelId } = await convertImagePromptToVideo([aiResult.prompt]);
+                videoPrompt = results[0] || null;
+                videoPromptModel = vpModelId || null;
+            } catch (vpErr) {
+                console.warn(`[image-single] video_prompt generation failed for ${imagePath}:`, vpErr?.message);
+            }
+        }
+
         // Delete any existing annotation for this image path
         await pool.query(
             `DELETE FROM saved_frames WHERE video_path = $1 AND format = 'image_annotation'`,
@@ -4369,8 +4403,8 @@ app.post('/api/image/analyze/single', express.json(), async (req, res) => {
 
         // Insert new annotation
         await pool.query(
-            `INSERT INTO saved_frames (video_path, video_name, timestamp, oss_url, oss_key, prompt, pose, pose_en, tags, dimensions, style, description, format, model_id, material_type, created_at)
-             VALUES ($1, $2, -1, '', '', $3, $4, $5, $6, $7, $8, $9, 'image_annotation', $10, $11, NOW())`,
+            `INSERT INTO saved_frames (video_path, video_name, timestamp, oss_url, oss_key, prompt, pose, pose_en, tags, dimensions, style, description, format, model_id, material_type, video_prompt, video_prompt_model, created_at)
+             VALUES ($1, $2, -1, '', '', $3, $4, $5, $6, $7, $8, $9, 'image_annotation', $10, $11, $12, $13, NOW())`,
             [
                 imagePath, path.basename(imagePath),
                 aiResult?.prompt || null,
@@ -4382,6 +4416,8 @@ app.post('/api/image/analyze/single', express.json(), async (req, res) => {
                 aiResult?.description || null,
                 aiResult?.modelId || null,
                 materialType,
+                videoPrompt,
+                videoPromptModel,
             ]
         );
         queryCache.invalidate('images_annotated');
@@ -4398,6 +4434,8 @@ app.post('/api/image/analyze/single', express.json(), async (req, res) => {
                 style: aiResult?.style || null,
                 model_id: aiResult?.modelId || null,
                 material_type: materialType,
+                video_prompt: videoPrompt,
+                video_prompt_model: videoPromptModel,
             }
         });
     } catch (err) {
@@ -4674,6 +4712,11 @@ app.get('/api/prompts/convertible-frames', async (req, res) => {
 });
 
 // POST /api/prompts/convert-to-video — SSE stream: batch convert image prompts to video prompts
+// Single-flight guard: convert-to-video keeps running in the background after
+// the client disconnects, so a second trigger (double-click / page reload)
+// would otherwise re-scan the same frames concurrently. Only one run at a time.
+let convertToVideoRunning = false;
+
 app.post('/api/prompts/convert-to-video', express.json(), async (req, res) => {
     // SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
@@ -4701,11 +4744,27 @@ app.post('/api/prompts/convert-to-video', express.json(), async (req, res) => {
         }
     };
 
+    let acquiredLock = false;
     try {
-        const { frameIds, filter, modelIds, modelId } = req.body || {};
+        const { frameIds, filter, modelIds, modelId, limit, maxAttempts: maxAttemptsRaw } = req.body || {};
         // Immediately notify client that SSE connection is alive (before any DB query)
         sendSSE({ type: 'connected', message: 'SSE connection established' });
-        console.log('[convert-to-video] Request body:', JSON.stringify({ frameIds: frameIds?.length, filter, modelIds, modelId }));
+
+        // Reject overlapping bulk runs (a specific frameIds reconvert is always allowed).
+        if (filter === 'missing_video_prompt' && convertToVideoRunning) {
+            console.log('[convert-to-video] Rejected: a bulk run is already in progress');
+            sendSSE({ type: 'busy', message: '已有一个批量转换任务在进行中，请等待其完成' });
+            if (clientConnected) res.end();
+            return;
+        }
+        if (filter === 'missing_video_prompt') { convertToVideoRunning = true; acquiredLock = true; }
+
+        // Frames whose conversion fails this many times (model refusal/moderation)
+        // are parked so they stop being re-scanned forever.
+        const maxAttempts = Number.isInteger(maxAttemptsRaw) && maxAttemptsRaw > 0 ? maxAttemptsRaw : 3;
+        const runLimit = Number.isInteger(limit) && limit > 0 ? limit : null;
+
+        console.log('[convert-to-video] Request body:', JSON.stringify({ frameIds: frameIds?.length, filter, modelIds, modelId, limit: runLimit, maxAttempts }));
         // Backward compatible: prefer modelIds array, fallback to single modelId
         const selectedModels = Array.isArray(modelIds) && modelIds.length > 0
             ? modelIds
@@ -4714,9 +4773,10 @@ app.post('/api/prompts/convert-to-video', express.json(), async (req, res) => {
         let frames;
 
         if (filter === 'missing_video_prompt') {
-            const result = await pool.query(
-                `SELECT id, prompt FROM saved_frames WHERE prompt IS NOT NULL AND prompt != '' AND (video_prompt IS NULL OR video_prompt = '') ORDER BY id`
-            );
+            const params = [maxAttempts];
+            let sql = `SELECT id, prompt FROM saved_frames WHERE prompt IS NOT NULL AND prompt != '' AND (video_prompt IS NULL OR video_prompt = '') AND COALESCE(video_prompt_attempts, 0) < $1 ORDER BY id`;
+            if (runLimit) { sql += ` LIMIT $2`; params.push(runLimit); }
+            const result = await pool.query(sql, params);
             frames = result.rows;
         } else if (Array.isArray(frameIds) && frameIds.length > 0) {
             const result = await pool.query(
@@ -4739,10 +4799,11 @@ app.post('/api/prompts/convert-to-video', express.json(), async (req, res) => {
         const total = frames.length;
         let successCount = 0;
         let failedCount = 0;
+        let refusedCount = 0; // permanent failures (model refusal/moderation) this run
         let processed = 0;
         let lastSentProgress = 0; // Track last sent progress to ensure monotonic increase
 
-        console.log(`[convert-to-video] Found ${total} frames to process`);
+        console.log(`[convert-to-video] Found ${total} frames to process (limit=${runLimit ?? 'none'}, maxAttempts=${maxAttempts})`);
         // Send total to client so frontend knows the full scope
         sendSSE({ type: 'start', total });
 
@@ -4752,69 +4813,108 @@ app.post('/api/prompts/convert-to-video', express.json(), async (req, res) => {
             const current = Math.min(processed, total); // Never exceed total
             if (current > lastSentProgress) {
                 lastSentProgress = current;
-                sendSSE({ type: 'progress', current, total });
+                sendSSE({ type: 'progress', current, total, success: successCount, failed: failedCount, refused: refusedCount });
             }
         };
 
-        // Round-robin assign frames to selected models
-        const modelGroups = {}; // { modelId: [{frame, originalIndex}, ...] }
-        frames.forEach((frame, idx) => {
-            const assignedModel = selectedModels[idx % selectedModels.length];
-            if (!modelGroups[assignedModel]) modelGroups[assignedModel] = [];
-            modelGroups[assignedModel].push({ frame, originalIndex: idx });
-        });
+        // Split all frames into batches of 10
+        const BATCH_SIZE = 10;
+        const batches = [];
+        for (let i = 0; i < frames.length; i += BATCH_SIZE) {
+            batches.push(frames.slice(i, i + BATCH_SIZE));
+        }
 
-        // Process each model group in parallel
-        await Promise.all(Object.entries(modelGroups).map(async ([groupModelId, groupItems]) => {
-            const groupFrames = groupItems.map(g => g.frame);
+        // Convert one batch, falling back through the remaining selected models for
+        // any item the current model REFUSES (refusals are model-specific; a
+        // different model may accept). Transient failures (rate limit/network) are
+        // left for a future run rather than burning the other models' quota.
+        const convertBatchWithFallback = async (batchFrames) => {
+            const out = batchFrames.map(() => ({ text: null, modelUsed: null, refused: false }));
+            let pending = batchFrames.map((f, idx) => ({ idx, prompt: f.prompt }));
 
-            // Split into batches of 10
-            const BATCH_SIZE = 10;
-            const batches = [];
-            for (let i = 0; i < groupFrames.length; i += BATCH_SIZE) {
-                batches.push(groupFrames.slice(i, i + BATCH_SIZE));
+            for (const model of selectedModels) {
+                if (pending.length === 0) break;
+                const { results: texts, modelId: usedModelId, refused } = await convertImagePromptToVideo(pending.map(p => p.prompt), model);
+                const stillPending = [];
+                pending.forEach((p, k) => {
+                    if (texts[k]) {
+                        out[p.idx] = { text: texts[k], modelUsed: usedModelId, refused: false };
+                    } else if (refused?.[k]) {
+                        out[p.idx].refused = true;   // try next model
+                        stillPending.push(p);
+                    } // else: transient failure — stop here, retry on a future run
+                });
+                pending = stillPending;
             }
+            return out;
+        };
 
-            // Process with concurrency limit of 2
-            const CONCURRENCY = 2;
-            for (let i = 0; i < batches.length; i += CONCURRENCY) {
-                const concurrentBatches = batches.slice(i, i + CONCURRENCY);
+        // Bounded global concurrency to keep the upstream API below its burst limit.
+        const CONCURRENCY = 3;
+        let cursor = 0;
+        const worker = async () => {
+            while (true) {
+                const myIdx = cursor++;
+                if (myIdx >= batches.length) break;
+                const batch = batches[myIdx];
+                const outcomes = await convertBatchWithFallback(batch);
 
-                await Promise.all(concurrentBatches.map(async (batch) => {
-                    const prompts = batch.map(f => f.prompt);
-                    const { results: videoPrompts, modelId: usedModelId } = await convertImagePromptToVideo(prompts, groupModelId);
+                for (let j = 0; j < batch.length; j++) {
+                    const frame = batch[j];
+                    const { text, modelUsed, refused } = outcomes[j];
 
-                    for (let j = 0; j < batch.length; j++) {
-                        const frame = batch[j];
-                        const videoPrompt = videoPrompts[j];
-
-                        if (videoPrompt) {
+                    if (text) {
+                        try {
+                            await pool.query(
+                                `UPDATE saved_frames SET video_prompt = $1, video_prompt_model = $2 WHERE id = $3`,
+                                [text, modelUsed, frame.id]
+                            );
+                            successCount++;
+                            sendSSE({ type: 'result', frameId: frame.id, video_prompt: text, modelId: modelUsed });
+                        } catch (dbErr) {
+                            failedCount++;
+                            console.error(`[convert-to-video] DB update failed for frame ${frame.id}:`, dbErr.message);
+                        }
+                    } else {
+                        failedCount++;
+                        // Only bump attempts on PERMANENT failures so they get parked;
+                        // transient (rate-limit/network) frames stay eligible next run.
+                        if (refused) {
+                            refusedCount++;
                             try {
                                 await pool.query(
-                                    `UPDATE saved_frames SET video_prompt = $1, video_prompt_model = $2 WHERE id = $3`,
-                                    [videoPrompt, usedModelId, frame.id]
+                                    `UPDATE saved_frames SET video_prompt_attempts = COALESCE(video_prompt_attempts, 0) + 1 WHERE id = $1`,
+                                    [frame.id]
                                 );
-                                successCount++;
-                                sendSSE({ type: 'result', frameId: frame.id, video_prompt: videoPrompt, modelId: usedModelId });
                             } catch (dbErr) {
-                                failedCount++;
-                                console.error(`[convert-to-video] DB update failed for frame ${frame.id}:`, dbErr.message);
+                                console.error(`[convert-to-video] attempts bump failed for frame ${frame.id}:`, dbErr.message);
                             }
-                        } else {
-                            failedCount++;
                         }
-
-                        reportProgress();
                     }
-                }));
-            }
-        }));
 
-        sendSSE({ type: 'done', success: successCount, failed: failedCount });
-        console.log(`[convert-to-video] Completed: ${successCount} success, ${failedCount} failed out of ${total} total`);
+                    reportProgress();
+                }
+            }
+        };
+        await Promise.all(Array.from({ length: Math.min(CONCURRENCY, batches.length || 1) }, () => worker()));
+
+        // How many missing frames are now permanently parked (>= maxAttempts)?
+        let exhausted = 0;
+        try {
+            const exRes = await pool.query(
+                `SELECT COUNT(*)::int AS n FROM saved_frames WHERE prompt IS NOT NULL AND prompt <> '' AND (video_prompt IS NULL OR video_prompt = '') AND COALESCE(video_prompt_attempts, 0) >= $1`,
+                [maxAttempts]
+            );
+            exhausted = exRes.rows[0]?.n ?? 0;
+        } catch { /* best-effort telemetry */ }
+
+        sendSSE({ type: 'done', success: successCount, failed: failedCount, refused: refusedCount, exhausted });
+        console.log(`[convert-to-video] Completed: ${successCount} success, ${failedCount} failed (${refusedCount} refused), ${exhausted} parked >= ${maxAttempts} attempts, out of ${total} total`);
     } catch (err) {
         console.error('[convert-to-video] Error:', err.message);
         sendSSE({ type: 'error', message: err.message });
+    } finally {
+        if (acquiredLock) convertToVideoRunning = false;
     }
 
     // Always end the response to prevent connection leaks (even after client disconnect)
